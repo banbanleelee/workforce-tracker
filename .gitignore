@@ -70,3 +70,6 @@ client/.cache/
 # Ignore database-related files if any
 server/database.sqlite
 server/database.sqlite3
+
+# Clean Cache
+.cache/
