@@ -23,7 +23,7 @@ const UserDashboard = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.get('http://localhost:5000/api/tasks', {
+      const response = await axios.get('https://workforce-tracker-backend.onrender.com/api/tasks', {
         params: {
           startDate: startDate ? startDate.toISOString() : null,
           endDate: endDate ? endDate.toISOString() : null,
@@ -55,7 +55,7 @@ const UserDashboard = () => {
     }
 
     try {
-      const response = await axios.get('http://localhost:5000/api/auth/me', {
+      const response = await axios.get('https://workforce-tracker-backend.onrender.com/api/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
