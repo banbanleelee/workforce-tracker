@@ -100,7 +100,7 @@ const AdminDashboard = () => {
   const fetchCurrentTasks = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('http://localhost:5000/api/tasks/current-tasks', {
+      const response = await axios.get('https://workforce-tracker-backend.onrender.com/api/tasks/current-tasks', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('authToken')}`,
         },
@@ -189,7 +189,7 @@ const AdminDashboard = () => {
     setLoading(true);
 
     try {
-      const response = await axios.get('http://localhost:5000/api/tasks/all-tasks-by-date', {
+      const response = await axios.get('https://workforce-tracker-backend.onrender.com/api/tasks/all-tasks-by-date', {
         params: {
           startDate,
           endDate,
