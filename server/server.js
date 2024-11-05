@@ -6,6 +6,13 @@ require('dotenv').config();
 
 const app = express();
 
+// Enable CORS with appropriate settings
+app.use(cors({
+  origin: '*', // Allow your frontend to access the backend
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow necessary HTTP methods
+  credentials: true // If you need cookies or Authorization headers
+}));
+
 // Middleware
 app.use(cors());
 app.use(express.json());

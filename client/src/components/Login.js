@@ -19,7 +19,7 @@ const Login = () => {
     try {
       console.log("Attempting to log in...");
       const response = await axios.post(
-        'http://localhost:5000/api/auth/login',
+        'https://workforce-tracker-backend.onrender.com/api/auth/login',
         { email, password },
         {
           headers: {
@@ -96,6 +96,7 @@ const Login = () => {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter your password"
             required
+            autoComplete="current-password"
           />
         </FormControl>
 
