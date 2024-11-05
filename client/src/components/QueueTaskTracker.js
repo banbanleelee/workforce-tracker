@@ -27,7 +27,7 @@ const QueueTaskTracker = () => {
   // Fetch today's tasks for the logged-in user
   const fetchTodaysTasks = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/tasks/today', {
+      const response = await axios.get('https://workforce-tracker-backend.onrender.com/api/tasks/today', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },
@@ -133,7 +133,7 @@ const QueueTaskTracker = () => {
       };
 
       try {
-        const response = await axios.post('http://localhost:5000/api/tasks', newTask, {
+        const response = await axios.post('https://workforce-tracker-backend.onrender.com/api/tasks', newTask, {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -157,7 +157,7 @@ const QueueTaskTracker = () => {
 
     try {
       // Update task with completion data
-      const response = await axios.put(`http://localhost:5000/api/tasks/complete/${taskId}`, {
+      const response = await axios.put(`https://workforce-tracker-backend.onrender.com/api/tasks/complete/${taskId}`, {
         timeSpent: parseInt(totalSeconds, 10),
         completed: true,
       }, {
