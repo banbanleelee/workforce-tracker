@@ -1,0 +1,18 @@
+{
+  "name": "workforce-tracker",
+  "version": "1.0.0",
+  "description": "Workforce tracker for managing tasks and teams",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "npm run server & npm run client",
+    "server": "nodemon server/server.js",
+    "client": "npm run start --prefix client",
+    "dev": "concurrently \"npm run server\" \"npm run client\""
+  },
+  "author": "Yixuan (Sally) Zhang",
+  "license": "ISC",
+  "dependencies": {
+    "concurrently": "^7.0.0"
+  },
+  "devDependencies": {}
+}
