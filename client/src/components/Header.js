@@ -32,7 +32,7 @@ const Header = () => {
     <Box bg="teal.500" p={4} color="white">
       <Flex alignItems="center">
         <Heading as="h1" size="md">
-          Hello, {firstName}!
+          {authToken ? `Hello, ${firstName}!` : 'CCM WFM Hub'}        
         </Heading>
         <Spacer />
         {!authToken && firstName && (
