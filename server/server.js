@@ -8,13 +8,14 @@ const app = express();
 
 // Enable CORS with appropriate settings
 app.use(cors({
-  origin: '*', // Allow your frontend to access the backend
+  origin: 'https://workforce-tracker.vercel.app', // Allow frontend to access the backend
+  optionSuccessStatus: 200, //For legacy browsers
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow necessary HTTP methods
-  credentials: true // If you need cookies or Authorization headers
+  credentials: true // Authorization headers
 }));
 
 // Middleware
-app.use(cors());
+// app.use(cors());
 app.use(express.json());
 
 // Database connection
