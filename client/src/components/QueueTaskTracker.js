@@ -1,22 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Box, FormControl, FormLabel, Input, Button, Heading, useToast } from '@chakra-ui/react';
+import { Box, FormControl, FormLabel, Button, Heading, useToast } from '@chakra-ui/react';
 import ReactSelect from 'react-select';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
 const QueueTaskTracker = () => {
   const [selectedQueue, setSelectedQueue] = useState(null);
-  // const [taskId, setTaskId] = useState(''); 
-  // Cost Management doesn't need CSI IDs
   const [taskLog, setTaskLog] = useState([]);
-  const [startTime, setStartTime] = useState(null);
+  const [activeTask, setActiveTask] = useState(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [taskInProgress, setTaskInProgress] = useState(false);
-  const [timeBeforePause, setTimeBeforePause] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [lockedQueue, setLockedQueue] = useState(null);
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -37,6 +35,23 @@ const QueueTaskTracker = () => {
 
       console.log("Fetched today's tasks:", response.data);
       setTaskLog(response.data);
+
+      // Find the latest incomplete task (if it exists)
+      const latestIncompleteTask = response.data.find(task => !task.completed);
+      if (latestIncompleteTask) {
+        setActiveTask(latestIncompleteTask);
+        setTaskInProgress(true);
+        setLockedQueue(latestIncompleteTask.queue); // Lock the queue for the ongoing task
+
+        // Calculate elapsed time based on the task's creation time
+        const elapsedTime = Math.floor((Date.now() - new Date(latestIncompleteTask.createdAt)) / 1000);
+        setTimeElapsed(elapsedTime);
+      } else {
+        setActiveTask(null);
+        setTaskInProgress(false);
+        setTimeElapsed(0);
+        setLockedQueue(null); // No task in progress, no locked queue
+      }
     } catch (error) {
       console.error("Error fetching today's tasks:", error);
 
@@ -70,16 +85,15 @@ const QueueTaskTracker = () => {
 
   useEffect(() => {
     let timer;
-    if (taskInProgress && !isPaused && startTime) {
+    if (taskInProgress && !isPaused && activeTask) {
       timer = setInterval(() => {
-        const seconds = ((Date.now() - startTime) / 1000).toFixed(0);
-        setTimeElapsed(formatTimeElapsed(seconds));
+        setTimeElapsed(prev => prev + 1);
       }, 1000);
     } else {
       clearInterval(timer);
     }
     return () => clearInterval(timer);
-  }, [taskInProgress, isPaused, startTime]);
+  }, [taskInProgress, isPaused, activeTask]);
 
   const handleTaskSaveError = (error) => {
     if (error.response) {
@@ -116,7 +130,6 @@ const QueueTaskTracker = () => {
     }
   };
   
-  
   // Format time from seconds to "h m s"
   const formatTimeElapsed = (seconds) => {
     const duration = moment.duration(seconds, 'seconds');
@@ -126,15 +139,11 @@ const QueueTaskTracker = () => {
   const handleQueueChange = (event) => {
     if (event) {
       setSelectedQueue(event);
-      // setTaskId('');
-      setTaskInProgress(false);
-      setTimeElapsed(0);
     }
   };
 
   const handleStartTask = async () => {
     if (selectedQueue) {
-      setStartTime(Date.now());
       setTaskInProgress(true);
       setIsPaused(false);
       setTimeElapsed(0);
@@ -155,6 +164,11 @@ const QueueTaskTracker = () => {
         });
   
         console.log('Task started successfully:', response.data);
+        setActiveTask(response.data);
+        setLockedQueue(selectedQueue.value); // Lock the queue to the current task's queue
+
+        // Immediately fetch updated tasks to ensure taskLog is up to date
+        await fetchTodaysTasks();
       } catch (error) {
         console.error('Error starting task:', error);
         handleTaskSaveError(error);
@@ -162,33 +176,13 @@ const QueueTaskTracker = () => {
     }
   };
   
-  
-
   const handleTaskComplete = async () => {
-    if (selectedQueue) {
+    if (activeTask) {
       // Stop timer and calculate time spent
-      const endTime = Date.now();
-      const totalSeconds = ((endTime - startTime) / 1000).toFixed(0);
-  
       try {
-        // Find the last task that matches the selected queue and is not completed
-        const lastTask = taskLog.find(task => !task.completed && task.queue === selectedQueue.value);
-  
-        if (!lastTask) {
-          // If no matching task is found, display an error message and stop here
-          toast({
-            title: 'No Task Found',
-            description: 'No incomplete task found for the selected queue.',
-            status: 'error',
-            duration: 3000,
-            isClosable: true,
-          });
-          return;
-        }
-  
-        // Proceed to update the task with completion data
-        const response = await axios.put(`${API_BASE_URL}/api/tasks/complete/${lastTask.taskId}`, {
-          timeSpent: parseInt(totalSeconds, 10),
+        const totalSeconds = timeElapsed;
+        const response = await axios.put(`${API_BASE_URL}/api/tasks/complete/${activeTask.taskId}`, {
+          timeSpent: totalSeconds,
           completed: true,
         }, {
           headers: {
@@ -202,81 +196,70 @@ const QueueTaskTracker = () => {
         // Stop the timer and reset relevant states
         setTaskInProgress(false);
         setIsPaused(false);
-        setStartTime(null);
+        setActiveTask(null);
         setTimeElapsed(0);
+        setLockedQueue(null);
   
         // Fetch updated task list to refresh the log
-        fetchTodaysTasks();
+        await fetchTodaysTasks();
       } catch (error) {
         console.error('Error completing task:', error);
         handleTaskSaveError(error);
       }
-    } else {
-      toast({
-        title: 'Invalid Action',
-        description: 'Please select a queue before completing the task.',
-        status: 'warning',
-        duration: 3000,
-        isClosable: true,
-      });
     }
-  };
-  
-
-  
-
+  }; 
 
   const handlePauseResume = () => {
-    if (isPaused) {
-      setStartTime(Date.now() - timeBeforePause);
-      setIsPaused(false);
-    } else {
-      setTimeBeforePause(Date.now() - startTime);
-      setIsPaused(true);
-    }
+    setIsPaused(!isPaused);
   };
 
-  
   return (
     <Box maxW={{ base: '100%', md: '66vw' }} mx="auto" mt={10} p={5} borderWidth={1} borderRadius="lg">
       <Heading as="h3" size="lg" mb={4} textAlign="center">
         Task Tracker
       </Heading>
+      <Heading as="h4" size="md" mb={4} textAlign="center">
+        {moment().format('dddd, MMMM Do YYYY')}
+      </Heading>
 
-      <FormControl id="queue-selection" mb={4}>
-        <FormLabel>Select Queue</FormLabel>
-        <ReactSelect
-          placeholder="Type Your Queue Name"
-          value={selectedQueue}
-          onChange={handleQueueChange}
-          options={queues.map((queue) => ({ value: queue, label: queue }))}
-          isSearchable
-        />
-      </FormControl>
-
-      {selectedQueue && (
-        <>
-          {taskInProgress && (
-            <Box mt={4} my={6} fontWeight="bold" textAlign="center">
-              Time Spent on Current Task: {timeElapsed}
-            </Box>
-          )}
-
-          {!taskInProgress ? (
-            <Button colorScheme="teal" mr={4} onClick={handleStartTask}>
-              Start Task
-            </Button>
-          ) : (
-            <Button colorScheme="teal" mr={4} onClick={handleTaskComplete}>
-              Finish Task
-            </Button>
-          )}
-          
-          <Button colorScheme="teal" onClick={handlePauseResume} isDisabled={!taskInProgress}>
-            {isPaused ? 'Resume Timer' : 'Pause Timer'}
-          </Button>
-        </>
+      {!taskInProgress && (
+        <FormControl id="queue-selection" mb={4}>
+          <FormLabel>Select Queue</FormLabel>
+          <ReactSelect
+            placeholder="Type Your Queue Name"
+            value={selectedQueue}
+            onChange={handleQueueChange}
+            options={queues.map((queue) => ({ value: queue, label: queue }))}
+            isSearchable
+          />
+        </FormControl>
       )}
+
+      {lockedQueue && (
+        <Box mt={4} my={6} fontWeight="bold" textAlign="center">
+          Currently Tracking Task in Queue: {lockedQueue}
+        </Box>
+      )}
+
+      {taskInProgress && (
+        <Box mt={4} my={6} fontWeight="bold" textAlign="center">
+          Time Spent on Current Task: {formatTimeElapsed(timeElapsed)}
+        </Box>
+      )}
+
+      {!taskInProgress ? (
+        <Button colorScheme="teal" mr={4} onClick={handleStartTask} isDisabled={!selectedQueue}>
+          Start Task
+        </Button>
+      ) : (
+        <Button colorScheme="teal" mr={4} onClick={handleTaskComplete}>
+          Finish Task
+        </Button>
+      )}
+      
+      <Button colorScheme="teal" onClick={handlePauseResume} isDisabled={!taskInProgress}>
+        {isPaused ? 'Resume Timer' : 'Pause Timer'}
+      </Button>
 
       <Box my={6} overflowX="auto">
         <Heading as="h4" size="md" mb={4} textAlign="center">
@@ -285,19 +268,25 @@ const QueueTaskTracker = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <th style={{ border: '1px solid #ccc', padding: '8px', width: '15%' }}>Task ID</th>
-              <th style={{ border: '1px solid #ccc', padding: '8px', width: '15%' }}>Queue</th>
+              <th style={{ border: '1px solid #ccc', padding: '8px', width: '15%' }}>Queue #</th>
+              <th style={{ border: '1px solid #ccc', padding: '8px', width: '15%' }}>Queue Type</th>
+              <th style={{ border: '1px solid #ccc', padding: '8px', width: '15%' }}>Start Time</th>
+              <th style={{ border: '1px solid #ccc', padding: '8px', width: '15%' }}>End Time</th>
               <th style={{ border: '1px solid #ccc', padding: '8px', width: '15%' }}>Time Spent</th>
             </tr>
           </thead>
           <tbody>
-            {taskLog.map((task, index) => (
-              <tr key={task._id}>
-                <td style={{ border: '1px solid #ccc', padding: '8px' }}>{task.taskId}</td>
-                <td style={{ border: '1px solid #ccc', padding: '8px' }}>{task.queue}</td>
-                <td style={{ border: '1px solid #ccc', padding: '8px' }}>{formatTimeElapsed(task.timeSpent)}</td>
-              </tr>
-            ))}
+            {taskLog
+              .filter(task => task.completed) // Only include completed tasks
+              .map((task, index) => (
+                <tr key={task._id}>
+                  <td style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'center', fontSize: '14px', whiteSpace: 'nowrap' }}>{index + 1}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px', fontSize: '14px', whiteSpace: 'nowrap' }}>{task.queue}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px', fontSize: '14px', whiteSpace: 'nowrap' }}>{moment(task.createdAt).tz(moment.tz.guess()).format('h:mm a z')}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px', fontSize: '14px', whiteSpace: 'nowrap' }}>{moment(task.updatedAt).tz(moment.tz.guess()).format('h:mm a z')}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px', fontSize: '14px', whiteSpace: 'nowrap' }}>{formatTimeElapsed(task.timeSpent)}</td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </Box>

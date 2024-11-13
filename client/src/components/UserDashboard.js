@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import * as XLSX from 'xlsx';
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
@@ -83,29 +83,29 @@ const UserDashboard = () => {
   };
 
   // Export tasks to Excel with a specific filename format
-  const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(
-      tasks.map((task) => ({
-        'Task ID': task.taskId,
-        Queue: task.queue,
-        'Time Spent (seconds)': task.timeSpent, // Store raw seconds for time spent
-        'Date Completed': XLSX.SSF.format("yyyy-mm-dd", new Date(task.createdAt)), // Format to Excel-compatible date
-      }))
-    );
+  // const exportToExcel = () => {
+  //   const worksheet = XLSX.utils.json_to_sheet(
+  //     tasks.map((task) => ({
+  //       'Task ID': task.taskId,
+  //       Queue: task.queue,
+  //       'Time Spent (seconds)': task.timeSpent, // Store raw seconds for time spent
+  //       'Date Completed': XLSX.SSF.format("yyyy-mm-dd", new Date(task.createdAt)), // Format to Excel-compatible date
+  //     }))
+  //   );
   
-    console.log(user); // confirm if user object is fetched correctly
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Tasks');
+  //   console.log(user); // confirm if user object is fetched correctly
+  //   const workbook = XLSX.utils.book_new();
+  //   XLSX.utils.book_append_sheet(workbook, worksheet, 'Tasks');
   
-    // Construct file name using user's first name, last name, and date range
-    const start = startDate ? moment(startDate).format('YYYY-MM-DD') : '';
-    const end = endDate ? moment(endDate).format('YYYY-MM-DD') : '';
-    const dateRange = start && end ? `${start}_to_${end}` : start || end || 'date_range';
-    const fileName = `${user.lastName}_${user.firstName}_${dateRange}.xlsx`;
+  //   // Construct file name using user's first name, last name, and date range
+  //   const start = startDate ? moment(startDate).format('YYYY-MM-DD') : '';
+  //   const end = endDate ? moment(endDate).format('YYYY-MM-DD') : '';
+  //   const dateRange = start && end ? `${start}_to_${end}` : start || end || 'date_range';
+  //   const fileName = `${user.lastName}_${user.firstName}_${dateRange}.xlsx`;
   
-    // Write file
-    XLSX.writeFile(workbook, fileName);
-  };
+  //   // Write file
+  //   XLSX.writeFile(workbook, fileName);
+  // };
   
 
   return (
@@ -147,21 +147,27 @@ const UserDashboard = () => {
       <Table variant="striped" colorScheme="teal" mt={4}>
         <Thead>
           <Tr>
-            <Th>Task ID</Th>
-            <Th>Queue</Th>
+            <Th>Queue #</Th>
+            <Th>Queue Name</Th>
+            <Th>Start Time</Th>
             <Th>Time Spent</Th>
-            <Th>Date Completed</Th>
           </Tr>
         </Thead>
         <Tbody>
-          {tasks.map((task, index) => (
-            <Tr key={task._id}>
-              <Td>{task.taskId}</Td>
-              <Td>{task.queue}</Td>
-              <Td>{formatTimeElapsed(task.timeSpent)}</Td>
-              <Td>{new Date(task.createdAt).toLocaleString()}</Td>
-            </Tr>
-          ))}
+            {tasks.length === 0 ? (
+            <Box textAlign="center" my={4} fontWeight="bold">
+              No tasks found for the selected date range.
+            </Box>
+          ) : (
+            tasks.map((task, index) => (
+              <Tr key={task._id}>
+                <Td>{index + 1}</Td>
+                <Td>{task.queue}</Td>
+                <Td>{moment(task.createdAt).tz(moment.tz.guess()).format('MM/DD/YYYY h:mm a z')}</Td>
+                <Td>{formatTimeElapsed(task.timeSpent)}</Td>
+              </Tr>
+            ))
+          )}
         </Tbody>
       </Table>
     </Box>

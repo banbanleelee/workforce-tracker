@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Heading, Button, Flex, Table, Tbody, Td, Th, Thead, Tr, useToast, Spinner, Input } from '@chakra-ui/react';
 import axios from 'axios';
-import moment from 'moment';
+import moment from 'moment-timezone';
 import * as XLSX from 'xlsx';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
@@ -80,9 +80,12 @@ const AdminDashboard = () => {
       } else if (downloadSortConfig.key === 'timeSpent') {
         aValue = a.timeSpent;
         bValue = b.timeSpent;
-      } else if (downloadSortConfig.key === 'dateCompleted') {
+      } else if (downloadSortConfig.key === 'dateStarted') {
         aValue = new Date(a.createdAt);
         bValue = new Date(b.createdAt);
+      } else if (downloadSortConfig.key === 'dateCompleted') {
+        aValue = new Date(a.updatedAt);
+        bValue = new Date(b.updatedAt);
       } else {
         aValue = a[downloadSortConfig.key];
         bValue = b[downloadSortConfig.key];
@@ -97,6 +100,7 @@ const AdminDashboard = () => {
     }
     return 0;
   });  
+  console.log('sortedTasksData:', sortedTasksData);
 
   // Fetch Current Tasks for Real-Time Monitoring
   const fetchCurrentTasks = async () => {
@@ -230,13 +234,15 @@ const AdminDashboard = () => {
 
     const worksheet = XLSX.utils.json_to_sheet(
       tasksData.map((task) => ({
-        'Task ID': task.taskId,
         'Team Member': task.teamMember,
         Queue: task.queue,
         'Time Spent (s)': task.timeSpent,
-        'Date Completed': new Date(task.createdAt).toLocaleDateString(),
+        'Date Completed': XLSX.SSF.format('yyyy-mm-dd', new Date(task.createdAt)), // Excel date format (yyyy-mm-dd)
+        'Start Time': new Date(task.createdAt).toLocaleTimeString('en-US', { hour12: false }), // Format as hh:mm:ss
+        'End Time': new Date(task.updatedAt).toLocaleTimeString('en-US', { hour12: false }), // Format as hh:mm:ss
       }))
     );
+    
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'All Team Member Tasks');
@@ -266,46 +272,70 @@ const AdminDashboard = () => {
       {/* Real-Time Data View */}
       {view === 'realTime' && (
         <Box>
-          <Heading as="h4" size="md" mb={4}>
-            Current Status of Team Members
-          </Heading>
-          {loading ? (
-            <Spinner size="lg" />
-          ) : (
-            <Table variant="striped" colorScheme="teal">
-              <Thead>
-                <Tr>
-                  <Th onClick={() => requestRealTimeSort('teamMember')} cursor="pointer">
-                    Team Member {realTimeSortConfig.key === 'teamMember' ? (realTimeSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
-                  </Th>
-                  <Th onClick={() => requestRealTimeSort('status')} cursor="pointer">
-                    Status {realTimeSortConfig.key === 'status' ? (realTimeSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
-                  </Th>
-                  <Th onClick={() => requestRealTimeSort('taskId')} cursor="pointer">
-                    Task ID {realTimeSortConfig.key === 'taskId' ? (realTimeSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
-                  </Th>
-                  <Th onClick={() => requestRealTimeSort('queue')} cursor="pointer">
-                    Queue {realTimeSortConfig.key === 'queue' ? (realTimeSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
-                  </Th>
-                  <Th onClick={() => requestRealTimeSort('timeSpent')} cursor="pointer">
-                    Time Spent (so far) {realTimeSortConfig.key === 'timeSpent' ? (realTimeSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
-                  </Th>
+        <Heading as="h4" size="md" mb={4} textAlign="left">
+          Current Status of Team Members
+        </Heading>
+        {loading ? (
+          <Spinner size="lg" />
+        ) : (
+          <Table variant="striped" colorScheme="teal" mt={4}>
+            <Thead>
+              <Tr>
+                <Th 
+                  onClick={() => requestRealTimeSort('teamMember')} 
+                  cursor="pointer" 
+                  whiteSpace="nowrap"
+                  textAlign="center"
+                >
+                  Team Member {realTimeSortConfig.key === 'teamMember' ? (realTimeSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
+                </Th>
+                <Th 
+                  onClick={() => requestRealTimeSort('status')} 
+                  cursor="pointer" 
+                  whiteSpace="nowrap"
+                  textAlign="center"
+                >
+                  Status {realTimeSortConfig.key === 'status' ? (realTimeSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
+                </Th>
+                <Th 
+                  onClick={() => requestRealTimeSort('queue')} 
+                  cursor="pointer" 
+                  whiteSpace="nowrap"
+                  textAlign="center"
+                >
+                  Queue {realTimeSortConfig.key === 'queue' ? (realTimeSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
+                </Th>
+                <Th 
+                  onClick={() => requestRealTimeSort('timeSpent')} 
+                  cursor="pointer" 
+                  whiteSpace="nowrap"
+                  textAlign="center"
+                >
+                  Time Spent (so far) {realTimeSortConfig.key === 'timeSpent' ? (realTimeSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
+                </Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {sortedCurrentTasks.map(({ user, activeTask }) => (
+                <Tr key={user.email}>
+                  <Td whiteSpace="nowrap" textAlign="center" fontSize="sm">
+                    {`${user.firstName} ${user.lastName}`}
+                  </Td>
+                  <Td whiteSpace="nowrap" textAlign="center" fontSize="sm">
+                    {activeTask && !activeTask.completed ? 'Active' : 'Idle'}
+                  </Td>
+                  <Td whiteSpace="nowrap" textAlign="center" fontSize="sm">
+                    {activeTask && !activeTask.completed ? activeTask.queue : '-'}
+                  </Td>
+                  <Td whiteSpace="nowrap" textAlign="center" fontSize="sm">
+                    {activeTask && !activeTask.completed ? activeTask.timeSpentFormatted : 'N/A'}
+                  </Td>
                 </Tr>
-              </Thead>
-              <Tbody>
-                {sortedCurrentTasks.map(({ user, activeTask }) => (
-                  <Tr key={user.email}>
-                    <Td>{`${user.firstName} ${user.lastName}`}</Td>
-                    <Td>{activeTask && !activeTask.completed ? 'Active' : 'Idle'}</Td>
-                    <Td>{activeTask && !activeTask.completed ? activeTask.taskId : '-'}</Td>
-                    <Td>{activeTask && !activeTask.completed ? activeTask.queue : '-'}</Td>
-                    <Td>{activeTask && !activeTask.completed ? activeTask.timeSpentFormatted : 'N/A'}</Td>
-                  </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          )}
-        </Box>
+              ))}
+            </Tbody>
+          </Table>
+        )}
+      </Box>      
       )}
 
       {/* Browse and Download Data View */}
@@ -338,44 +368,98 @@ const AdminDashboard = () => {
             <Spinner size="lg" />
           ) : (
             tasksData.length > 0 && (
-              <Box>
-                <Table variant="striped" colorScheme="teal" mt={4}>
-                  <Thead>
-                  <Tr>
-                    <Th onClick={() => requestDownloadSort('taskId')} cursor="pointer">
-                      Task ID {downloadSortConfig.key === 'taskId' ? (downloadSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
-                    </Th>
-                    <Th onClick={() => requestDownloadSort('teamMember')} cursor="pointer">
-                      Team Member {downloadSortConfig.key === 'teamMember' ? (downloadSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
-                    </Th>
-                    <Th onClick={() => requestDownloadSort('queue')} cursor="pointer">
-                      Queue {downloadSortConfig.key === 'queue' ? (downloadSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
-                    </Th>
-                    <Th onClick={() => requestDownloadSort('timeSpent')} cursor="pointer">
-                      Time Spent (s) {downloadSortConfig.key === 'timeSpent' ? (downloadSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
-                    </Th>
-                    <Th onClick={() => requestDownloadSort('dateCompleted')} cursor="pointer">
-                      Date Completed {downloadSortConfig.key === 'dateCompleted' ? (downloadSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
-                    </Th>
-                  </Tr>
-                  </Thead>
-                  <Tbody>
-                    {sortedTasksData.map((task) => (
-                      <Tr key={task._id}>
-                        <Td>{task.taskId}</Td>
-                        <Td>{task.teamMember}</Td>
-                        <Td>{task.queue}</Td>
-                        <Td>{task.timeSpent}</Td>
-                        <Td>{new Date(task.createdAt).toLocaleDateString()}</Td>
-                      </Tr>
-                    ))}
-                  </Tbody>
-                </Table>
+              <Box border="1px" borderColor="gray.200" borderRadius="md" boxShadow="lg" p={4} mt={4}>
+      <Table variant="simple" colorScheme="teal" size="sm" mt={4}>
+        <Thead bg="teal.600">
+          <Tr>
+            <Th
+              color="white"
+              onClick={() => requestDownloadSort('teamMember')}
+              cursor="pointer"
+              textAlign="center"
+              whiteSpace="nowrap"
+            >
+              Team Member {downloadSortConfig.key === 'teamMember' ? (downloadSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
+            </Th>
+            <Th
+              color="white"
+              onClick={() => requestDownloadSort('queue')}
+              cursor="pointer"
+              textAlign="center"
+              whiteSpace="nowrap"
+            >
+              Queue {downloadSortConfig.key === 'queue' ? (downloadSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
+            </Th>
+            <Th
+              color="white"
+              onClick={() => requestDownloadSort('dateStarted')}
+              cursor="pointer"
+              textAlign="center"
+              whiteSpace="nowrap"
+            >
+              Date {downloadSortConfig.key === 'dateStarted' ? (downloadSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
+            </Th>
+            <Th
+              color="white"
+              onClick={() => requestDownloadSort('dateStarted')}
+              cursor="pointer"
+              textAlign="center"
+              whiteSpace="nowrap"
+            >
+              Start Time {downloadSortConfig.key === 'dateStarted' ? (downloadSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
+            </Th>
+            <Th
+              color="white"
+              onClick={() => requestDownloadSort('dateCompleted')}
+              cursor="pointer"
+              textAlign="center"
+              whiteSpace="nowrap"
+            >
+              End Time {downloadSortConfig.key === 'dateCompleted' ? (downloadSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
+            </Th>
+            <Th
+              color="white"
+              onClick={() => requestDownloadSort('timeSpent')}
+              cursor="pointer"
+              textAlign="center"
+              whiteSpace="nowrap"
+            >
+              Time Spent (s) {downloadSortConfig.key === 'timeSpent' ? (downloadSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
+            </Th>
+          </Tr>
+        </Thead>
+        <Tbody>
+          {sortedTasksData && sortedTasksData.length === 0 ? (
+            <Tr>
+              <Td colSpan="6" textAlign="center" fontWeight="bold" py={4}>
+                No tasks found for the selected date range.
+              </Td>
+            </Tr>
+          ) : (
+            sortedTasksData.map((task, index) => (
+              <Tr key={task._id}>
+                <Td textAlign="center" fontSize="sm" whiteSpace="nowrap">{task.teamMember}</Td>
+                <Td textAlign="center" fontSize="sm" whiteSpace="nowrap">{task.queue}</Td>
+                <Td textAlign="center" fontSize="sm" whiteSpace="nowrap">
+                  {moment(task.createdAt).tz(moment.tz.guess()).format('MM/DD/YYYY')}
+                </Td>
+                <Td textAlign="center" fontSize="sm" whiteSpace="nowrap">
+                  {moment(task.createdAt).tz(moment.tz.guess()).format('h:mm a z')}
+                </Td>
+                <Td textAlign="center" fontSize="sm" whiteSpace="nowrap">
+                  {moment(task.updatedAt).tz(moment.tz.guess()).format('h:mm a z')}
+                </Td>
+                <Td textAlign="center" fontSize="sm" whiteSpace="nowrap">{task.timeSpent}</Td>
+              </Tr>
+            ))
+          )}
+        </Tbody>
+      </Table>
 
-                <Button colorScheme="blue" mt={4} onClick={exportToExcel}>
-                  Export to Excel
-                </Button>
-              </Box>
+      <Button colorScheme="blue" mt={4} onClick={exportToExcel} size="sm">
+        Export to Excel
+      </Button>
+    </Box>
             )
           )}
         </Box>
