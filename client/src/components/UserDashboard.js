@@ -163,7 +163,7 @@ const UserDashboard = () => {
               <Tr key={task._id}>
                 <Td>{index + 1}</Td>
                 <Td>{task.queue}</Td>
-                <Td>{moment(task.createdAt).tz(moment.tz.guess()).format('MM/DD/YYYY h:mm a z')}</Td>
+                <Td>{moment(task.createdAt).tz('America/New_York').format('MM/DD/YYYY h:mm a z')}</Td>
                 <Td>{formatTimeElapsed(task.timeSpent)}</Td>
               </Tr>
             ))
