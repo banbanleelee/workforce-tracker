@@ -1,17 +1,19 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Box, Button, Flex, Heading, Spacer } from '@chakra-ui/react';
+import { Box, Button, Flex, Heading, Spacer, Text } from '@chakra-ui/react';
 import { jwtDecode } from 'jwt-decode';
 
 const Header = () => {
   const navigate = useNavigate();
   const authToken = localStorage.getItem('authToken');
   let userRole = null;
+  let firstName = null;
 
   if (authToken) {
     try {
       const decodedToken = jwtDecode(authToken);
       userRole = decodedToken.role;
+      firstName = decodedToken.firstName;
     } catch (error) {
       console.error('Error decoding JWT:', error);
       localStorage.removeItem('authToken');
@@ -24,14 +26,16 @@ const Header = () => {
     navigate('/');
   };
 
+  console.log(firstName);
+
   return (
     <Box bg="teal.500" p={4} color="white">
       <Flex alignItems="center">
         <Heading as="h1" size="md">
-          Workforce Tracker
+          Hello, {firstName}!
         </Heading>
         <Spacer />
-        {!authToken && (
+        {!authToken && firstName && (
           <>
             <Button as={Link} to="/" colorScheme="teal" variant="outline" mr={2}>
               Login

@@ -11,8 +11,8 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:500
 
 const UserDashboard = () => {
   const [tasks, setTasks] = useState([]);
-  const [startDate, setStartDate] = useState(new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })));
-  const [endDate, setEndDate] = useState(new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })));
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
   const [user, setUser] = useState({});
   const navigate = useNavigate();
   const toast = useToast();
