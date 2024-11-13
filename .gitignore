@@ -1,0 +1,54 @@
+# Node modules and dependencies
+/node_modules
+/client/node_modules
+/server/node_modules
+
+# Yarn/Plug'n'Play
+.pnp
+.pnp.js
+
+# Build output
+/build
+/server/build
+/client/build
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test coverage output
+/coverage
+
+# Environment variables
+.env*
+/server/.env
+
+# Miscellaneous
+.DS_Store
+Thumbs.db
+
+# Production builds
+/server/dist
+
+# IDE specific files
+.vscode/
+.idea/
+*.sublime-workspace
+
+# Temporary files
+tmp/
+*.swp
+*.swo
+
+# Local git hooks
+.husky/
+
+# Windows system files
+*.db
+
+# Ignore config for ESLint/Prettier/others specific to personal dev setups
+!.eslintrc.json
+!.prettierrc
