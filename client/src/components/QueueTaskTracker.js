@@ -256,11 +256,6 @@ const QueueTaskTracker = () => {
           Finish Task
         </Button>
       )}
-      
-      <Button colorScheme="teal" onClick={handlePauseResume} isDisabled={!taskInProgress}>
-        {isPaused ? 'Resume Timer' : 'Pause Timer'}
-      </Button>
-
       <Box my={6} overflowX="auto">
         <Heading as="h4" size="md" mb={4} textAlign="center">
           Task Log
