@@ -51,6 +51,33 @@ router.post('/', verifyToken('teamMember'), async (req, res) => {
   }
 });
 
+//Fetch past 7 days of the logged in team member's tasks
+router.get('/', verifyToken('teamMember'), async (req, res) => {
+  const { userId } = req.user; // Extract user ID from the decoded token
+
+  try {
+    // Calculate start and end of the past 7 days
+    const endDate = moment().endOf('day').toDate();
+    const startDate = moment().subtract(6, 'days').startOf('day').toDate();
+
+    // Find user by ID
+    const user = await User.findById(userId).select('tasks');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Filter tasks within the past 7 days
+    const tasksFromPast7Days = user.tasks.filter((task) => {
+      const taskStartDate = new Date(task.startDate);
+      return taskStartDate >= startDate && taskStartDate <= endDate;
+    });
+
+    res.status(200).json(tasksFromPast7Days);
+  } catch (error) {
+    console.error('Error fetching user tasks:', error);
+    res.status(500).json({ error: 'Server Error', details: error.message });
+  }
+});
 
 // Get today's task
 router.get('/today', verifyToken('teamMember'), async (req, res) => {

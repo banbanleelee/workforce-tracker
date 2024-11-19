@@ -23,23 +23,7 @@ const UserDashboard = () => {
   const navigate = useNavigate();
   const toast = useToast();
 
-  // Adjust the dates to match the range where tasks exist
-  const [startDate] = useState(
-    new Date('2024-11-11T00:00:00-05:00') // November 11, 2024
-  );
-  const [endDate] = useState(
-    new Date('2024-11-16T23:59:59-05:00') // November 16, 2024
-  );
-
-  // Log the current date and adjusted start and end dates
-  console.log(
-    'Current date according to moment:',
-    moment.tz('America/New_York').format()
-  );
-  console.log('Adjusted startDate:', startDate);
-  console.log('Adjusted endDate:', endDate);
-
-  // Fetch tasks for the selected date range
+  // Fetch tasks for the past 7 days
   const fetchTasks = async () => {
     console.log('fetchTasks called');
     try {
@@ -49,18 +33,10 @@ const UserDashboard = () => {
         throw new Error('No authentication token found');
       }
 
-      const formattedStartDate = moment(startDate).format('YYYY-MM-DD');
-      const formattedEndDate = moment(endDate).format('YYYY-MM-DD');
+      console.log('Fetching tasks for the past 7 days');
 
-      console.log('Fetching tasks with the following parameters:');
-      console.log('Start Date:', formattedStartDate);
-      console.log('End Date:', formattedEndDate);
-
+      // Make a GET request to the updated route that automatically handles the past 7 days
       const response = await axios.get(`${API_BASE_URL}/api/tasks`, {
-        params: {
-          startDate: formattedStartDate,
-          endDate: formattedEndDate,
-        },
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -94,7 +70,7 @@ const UserDashboard = () => {
       navigate('/');
       return;
     }
-  
+
     try {
       console.log('Fetching user info...');
       const response = await axios.get(`${API_BASE_URL}/api/auth/me`, {
@@ -121,7 +97,6 @@ const UserDashboard = () => {
       navigate('/');
     }
   };
-  
 
   useEffect(() => {
     fetchUserInfo();
@@ -152,11 +127,12 @@ const UserDashboard = () => {
         </Thead>
         <Tbody>
           {tasks.map((task, index) => {
+            // Log each task that is being rendered
             console.log("Rendering Task:", {
               queue: task.queue,
               startDate: task.startDate,
               endDate: task.endDate,
-              timeSpent: task.timeSpent
+              timeSpent: task.timeSpent,
             });
 
             return (
