@@ -8,7 +8,7 @@ const app = express();
 
 // Enable CORS with appropriate settings
 app.use(cors({
-  origin: 'https://workforce-tracker.vercel.app', // Allow frontend to access the backend
+  origin: '*', // Allow frontend to access the backend 'https://workforce-tracker.vercel.app'
   optionSuccessStatus: 200, //For legacy browsers
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow necessary HTTP methods
   credentials: true // Authorization headers

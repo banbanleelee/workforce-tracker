@@ -6,6 +6,7 @@ const taskSchema = new mongoose.Schema({
     type: String,
     required: true,
     default: () => uuidv4(), // Generate a unique ID for each task
+    unique: true,
   },
   timeSpent: {
     type: Number,
@@ -23,7 +24,14 @@ const taskSchema = new mongoose.Schema({
     type: Boolean,
     default: false, // When a task is created, it is not completed yet
   },
-}, { timestamps: true }); // Add timestamps here
+  startDate: {
+    type: Date, // New field to explicitly track the start date (including time) of the task
+  },
+  endDate: {
+    type: Date, // New field to explicitly track the end date (including time) of the task
+  },
+}, { timestamps: true });
+
 
 // Define User Schema
 const userSchema = new mongoose.Schema({

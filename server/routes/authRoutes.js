@@ -94,7 +94,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Find the logged-in user's information
-router.get('/me', verifyToken, async (req, res) => {
+router.get('/me', verifyToken(), async (req, res) => {
     try {
         const { userId } = req.user;
 

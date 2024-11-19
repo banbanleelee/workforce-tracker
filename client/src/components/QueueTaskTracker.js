@@ -19,9 +19,22 @@ const QueueTaskTracker = () => {
   const toast = useToast();
 
   const queues = [
-    'Medical Records Requests',
-    'Medical Records SF',
-    'Programs Cases',
+    'Personal Email',
+    'Personal Queue',
+    'SF Discount Dispute',
+    'CSI Discount Dispute',
+    'CSI Pre-service Dispute',
+    'PCS: Data I Dispute',
+    'PCS: Faircost Dispute',
+    'PCS: Discount Dispute',
+    'PCS: Pre=service Dispute',
+    'PCS: FH Discount Dispute',
+    'PCS: FH Pre-service Dispute',
+    'PCS: MP Discount Dispute',
+    'PCS: MP Pre-service Dispute',
+    'Chapel',
+    'Break',
+    'Training',
   ];
 
   // Fetch today's tasks for the logged-in user

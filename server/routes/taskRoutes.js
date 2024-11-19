@@ -5,13 +5,16 @@ const User = require('../models/User'); // Ensure this path is correct
 const { verifyToken, verifyAdmin } = require('../middleware/auth');
 const moment = require('moment');
 const { v4: uuidv4 } = require('uuid');
+const mongoose = require('mongoose');
 
 // Define the route to add a new task
 router.post('/', verifyToken('teamMember'), async (req, res) => {
-  console.log('Request received:', req.body);
+  console.log('Request received:', req.body); // To check if request is reaching here
   try {
     const { userId } = req.user; // Get user ID from the decoded token (using middleware)
-    const { queue, timeSpent, completed = false } = req.body;
+    const { timeSpent, queue, completed = false, startDate, endDate } = req.body;
+
+    console.log('Received request body:', req.body); // Log the request body
 
     // Find the user by ID
     console.log('Looking up user with ID:', userId);
@@ -29,6 +32,8 @@ router.post('/', verifyToken('teamMember'), async (req, res) => {
       timeSpent,
       queue,
       completed,
+      startDate: startDate ? new Date(startDate) : new Date(), // If provided, use startDate; otherwise use current time
+      endDate: endDate ? new Date(endDate) : new Date(), // If provided, use endDate; otherwise use current time
     };
 
     // Add the new task to the user's `tasks` array
@@ -41,12 +46,13 @@ router.post('/', verifyToken('teamMember'), async (req, res) => {
     // Return the newly added task
     res.status(201).json({ message: 'Task added successfully', task: newTask });
   } catch (error) {
-    console.error('Detailed error saving task:', error);
+    console.error('Detailed error saving task:', error); // Log the exact error
     res.status(500).json({ error: 'Server Error', details: error.message });
   }
 });
 
 
+// Get today's task
 router.get('/today', verifyToken('teamMember'), async (req, res) => {
   console.log('Fetching today\'s tasks...');
   try {
@@ -61,10 +67,10 @@ router.get('/today', verifyToken('teamMember'), async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Filter tasks created today
+    // Filter tasks started today (local time)
     const todayTasks = user.tasks.filter(task => {
-      const taskCreatedAt = new Date(task.createdAt);
-      return taskCreatedAt >= startOfDay && taskCreatedAt <= endOfDay;
+      const taskStartDate = new Date(task.startDate);
+      return taskStartDate >= startOfDay && taskStartDate <= endOfDay;
     });
 
     res.status(200).json(todayTasks);
@@ -74,12 +80,13 @@ router.get('/today', verifyToken('teamMember'), async (req, res) => {
   }
 });
 
+
 // Update a task's status or details for the logged-in user
-router.put('/:id', verifyToken, async (req, res) => {
+router.put('/:id', verifyToken('teamMember'), async (req, res) => {
   console.log('Request received:', req.body);  // Add this log to inspect the incoming request payload
 
   const { id } = req.params;
-  const { completed } = req.body;
+  const { completed, startDate, endDate } = req.body;  // Destructure `startDate` and `endDate` from request body
   const { userId } = req.user;
 
   try {
@@ -102,7 +109,17 @@ router.put('/:id', verifyToken, async (req, res) => {
       console.log('Updating completed status:', completed);
       task.completed = completed;
     }
-    
+
+    if (startDate) {
+      console.log('Updating start date:', startDate);
+      task.startDate = new Date(startDate);  // Update `startDate` if provided in request
+    }
+
+    if (endDate) {
+      console.log('Updating end date:', endDate);
+      task.endDate = new Date(endDate);  // Update `endDate` if provided in request
+    }
+
     // Save the updated user document with the modified task
     await user.save();
     console.log('Task updated successfully:', task);
@@ -115,29 +132,45 @@ router.put('/:id', verifyToken, async (req, res) => {
   }
 });
 
-
+// Update a task's completion status or details, including startDate and endDate (Team Member View)
 router.put('/complete/:taskId', verifyToken('teamMember'), async (req, res) => {
   const { taskId } = req.params;
-  const { timeSpent, completed } = req.body;
+  const { timeSpent, completed, startDate, endDate } = req.body;
 
-  if (!timeSpent || typeof timeSpent !== 'number' || timeSpent < 0) {
+  // Validate `timeSpent` if provided
+  if (timeSpent && (typeof timeSpent !== 'number' || timeSpent < 0)) {
     return res.status(400).json({ error: 'Invalid timeSpent value' });
   }
 
-  if (typeof completed !== 'boolean') {
+  // Validate `completed` if provided
+  if (typeof completed !== 'undefined' && typeof completed !== 'boolean') {
     return res.status(400).json({ error: 'Invalid completed value' });
   }
 
   try {
-    // Find the user and update the task with the given taskId
+    // Construct the update object based on provided fields
+    const updateFields = {};
+    
+    if (typeof timeSpent === 'number') {
+      updateFields['tasks.$.timeSpent'] = timeSpent;
+    }
+
+    if (typeof completed === 'boolean') {
+      updateFields['tasks.$.completed'] = completed;
+    }
+
+    if (startDate) {
+      updateFields['tasks.$.startDate'] = new Date(startDate);
+    }
+
+    if (endDate) {
+      updateFields['tasks.$.endDate'] = new Date(endDate);
+    }
+
+    // Find the user and update the specific task
     const user = await User.findOneAndUpdate(
       { 'tasks.taskId': taskId },
-      { 
-        $set: {
-          'tasks.$.timeSpent': timeSpent,
-          'tasks.$.completed': completed,
-        }
-      },
+      { $set: updateFields },
       { new: true }
     );
 
@@ -148,41 +181,9 @@ router.put('/complete/:taskId', verifyToken('teamMember'), async (req, res) => {
     // Find the updated task from the user object
     const updatedTask = user.tasks.find(task => task.taskId === taskId);
 
-    res.status(200).json({ message: 'Task completed successfully', task: updatedTask });
+    res.status(200).json({ message: 'Task updated successfully', task: updatedTask });
   } catch (error) {
     console.error('Error completing task:', error);
-    res.status(500).json({ error: 'Server Error', details: error.message });
-  }
-});
-
-router.get('/', verifyToken('teamMember'), async (req, res) => {
-  const { userId } = req.user; // User ID from the decoded token
-  const { startDate, endDate } = req.query;
-
-  try {
-    // Find the user by ID
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Extract tasks from user
-    let tasks = user.tasks;
-
-    // Filter tasks by date range if provided
-    if (startDate && endDate) {
-      const start = moment(startDate).startOf('day').toDate();
-      const end = moment(endDate).endOf('day').toDate();
-
-      tasks = tasks.filter((task) => {
-        const taskDate = new Date(task.createdAt);
-        return taskDate >= start && taskDate <= end;
-      });
-    }
-
-    res.status(200).json(tasks);
-  } catch (error) {
-    console.error('Error fetching tasks:', error);
     res.status(500).json({ error: 'Server Error', details: error.message });
   }
 });
@@ -215,7 +216,7 @@ router.get('/current-tasks', verifyToken('admin'), async (req, res) => {
   }
 });
 
-// Get tasks for specific team member and date range (Admin View)
+// Get tasks for a specific team member and date range (Admin View)
 router.get('/tasks-by-team-member', verifyToken('admin'), async (req, res) => {
   const { startDate, endDate, userId } = req.query;
 
@@ -236,7 +237,10 @@ router.get('/tasks-by-team-member', verifyToken('admin'), async (req, res) => {
 
     // Filter user's tasks by date range
     const filteredTasks = user.tasks.filter(task => {
-      return task.createdAt >= start && task.createdAt <= end;
+      const taskStart = new Date(task.startDate);
+      const taskEnd = new Date(task.endDate);
+      // Ensure either task's start date or end date falls within the range
+      return (taskStart >= start && taskStart <= end) || (taskEnd >= start && taskEnd <= end);
     });
 
     res.status(200).json({
@@ -271,10 +275,11 @@ router.get('/all-tasks-by-date', verifyToken('admin'), async (req, res) => {
       return res.status(400).json({ error: 'Please provide startDate and endDate.' });
     }
 
+    // Set start and end times for the query using moment
     const start = moment(startDate).startOf('day').toDate();
     const end = moment(endDate).endOf('day').toDate();
 
-    // Find all users with role 'teamMember'
+    // Find all users with role 'teamMember' and select relevant fields
     const users = await User.find({ role: 'teamMember' }).select('tasks firstName lastName email');
 
     if (!users || users.length === 0) {
@@ -283,9 +288,14 @@ router.get('/all-tasks-by-date', verifyToken('admin'), async (req, res) => {
 
     // Collect tasks for all users within the date range
     const filteredTasks = users.flatMap(user => 
-      user.tasks.filter(task => task.createdAt >= start && task.createdAt <= end)
-        .map(task => ({
+      user.tasks.filter(task => {
+        const taskStart = new Date(task.startDate);
+        const taskEnd = new Date(task.endDate);
+        // Ensure either task's start date or end date falls within the range
+        return (taskStart >= start && taskStart <= end) || (taskEnd >= start && taskEnd <= end);
+      }).map(task => ({
           ...task.toObject(),
+          _id: task._id,  // Include MongoDB ObjectId (_id)
           teamMember: `${user.firstName} ${user.lastName}`
         }))
     );
@@ -299,6 +309,52 @@ router.get('/all-tasks-by-date', verifyToken('admin'), async (req, res) => {
   }
 });
 
+
+// Update a specific task by its MongoDB ObjectId (Admin View)
+router.put('/update-task/:taskId', verifyToken('admin'), async (req, res) => {
+  const { taskId } = req.params;
+  const { startDate, endDate } = req.body;
+
+  console.log('Received taskId:', taskId);
+  console.log('Received data:', { startDate, endDate });
+
+  try {
+    // Ensure taskId is properly converted to ObjectId
+    const objectIdTaskId = new mongoose.Types.ObjectId(taskId);
+
+    // Find the user who has the task and update the specific task's fields
+    const user = await User.findOne({ 'tasks._id': objectIdTaskId });
+
+    if (!user) {
+      console.log('No user found with that task ID:', taskId);
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    // Find and update the task in the user's tasks array
+    const task = user.tasks.id(objectIdTaskId);
+    if (!task) {
+      console.log('No task found within user tasks:', taskId);
+      return res.status(404).json({ error: 'Task not found in user tasks' });
+    }
+
+    // Update task fields
+    if (startDate) task.startDate = new Date(startDate);
+    if (endDate) task.endDate = new Date(endDate);
+
+    // Optionally, recalculate timeSpent if both startDate and endDate are provided
+    if (startDate && endDate) {
+      task.timeSpent = Math.floor((new Date(endDate) - new Date(startDate)) / 1000);
+    }
+
+    // Save the updated user document
+    await user.save();
+
+    res.status(200).json({ message: 'Task updated successfully', task });
+  } catch (error) {
+    console.error('Error updating task:', error);
+    res.status(500).json({ error: 'Server error', details: error.message });
+  }
+});
 
 
 module.exports = router;

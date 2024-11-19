@@ -1,43 +1,80 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Heading, Button, Input, Table, Tbody, Td, Th, Thead, Tr, useToast } from '@chakra-ui/react';
+import {
+  Box,
+  Heading,
+  Table,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  useToast,
+} from '@chakra-ui/react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import * as XLSX from 'xlsx';
 import moment from 'moment-timezone';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
 const UserDashboard = () => {
   const [tasks, setTasks] = useState([]);
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
   const [user, setUser] = useState({});
   const navigate = useNavigate();
   const toast = useToast();
 
-  // Fetch tasks for selected date range
+  // Adjust the dates to match the range where tasks exist
+  const [startDate] = useState(
+    new Date('2024-11-11T00:00:00-05:00') // November 11, 2024
+  );
+  const [endDate] = useState(
+    new Date('2024-11-16T23:59:59-05:00') // November 16, 2024
+  );
+
+  // Log the current date and adjusted start and end dates
+  console.log(
+    'Current date according to moment:',
+    moment.tz('America/New_York').format()
+  );
+  console.log('Adjusted startDate:', startDate);
+  console.log('Adjusted endDate:', endDate);
+
+  // Fetch tasks for the selected date range
   const fetchTasks = async () => {
+    console.log('fetchTasks called');
     try {
       const token = localStorage.getItem('authToken');
+      console.log('Auth token in fetchTasks:', token);
       if (!token) {
         throw new Error('No authentication token found');
       }
 
+      const formattedStartDate = moment(startDate).format('YYYY-MM-DD');
+      const formattedEndDate = moment(endDate).format('YYYY-MM-DD');
+
+      console.log('Fetching tasks with the following parameters:');
+      console.log('Start Date:', formattedStartDate);
+      console.log('End Date:', formattedEndDate);
+
       const response = await axios.get(`${API_BASE_URL}/api/tasks`, {
         params: {
-          startDate: startDate ? startDate.toISOString() : null,
-          endDate: endDate ? endDate.toISOString() : null,
+          startDate: formattedStartDate,
+          endDate: formattedEndDate,
         },
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
       });
 
+      console.log('Response data:', response.data);
       setTasks(response.data);
+      console.log('Tasks state updated:', response.data);
     } catch (error) {
       console.error('Error fetching tasks:', error);
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+      }
       toast({
         title: 'Error',
         description: 'Failed to fetch tasks. Please try again.',
@@ -50,31 +87,45 @@ const UserDashboard = () => {
 
   // Fetch user information
   const fetchUserInfo = async () => {
+    console.log('fetchUserInfo called');
     const token = localStorage.getItem('authToken');
+    console.log('Auth token:', token);
     if (!token) {
       navigate('/');
       return;
     }
-
+  
     try {
+      console.log('Fetching user info...');
       const response = await axios.get(`${API_BASE_URL}/api/auth/me`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
+      console.log('Received response:', response);
+      console.log('User info response:', response.data);
       setUser(response.data);
-      // Automatically fetch today's tasks when the user is authorized
+      // Call fetchTasks after setting the user
       fetchTasks();
     } catch (error) {
       console.error('User verification failed:', error);
+      if (error.response) {
+        console.error('Error response status:', error.response.status);
+        console.error('Error response data:', error.response.data);
+      } else if (error.request) {
+        console.error('No response received from server:', error.request);
+      } else {
+        console.error('Error setting up request:', error.message);
+      }
       localStorage.removeItem('authToken');
       navigate('/');
     }
   };
+  
 
   useEffect(() => {
     fetchUserInfo();
-  }, [navigate, toast]);
+  }, []);
 
   // Format time from seconds to "h m s"
   const formatTimeElapsed = (timeSpent) => {
@@ -82,66 +133,11 @@ const UserDashboard = () => {
     return `${duration.hours()}h ${duration.minutes()}m ${duration.seconds()}s`;
   };
 
-  // Export tasks to Excel with a specific filename format
-  // const exportToExcel = () => {
-  //   const worksheet = XLSX.utils.json_to_sheet(
-  //     tasks.map((task) => ({
-  //       'Task ID': task.taskId,
-  //       Queue: task.queue,
-  //       'Time Spent (seconds)': task.timeSpent, // Store raw seconds for time spent
-  //       'Date Completed': XLSX.SSF.format("yyyy-mm-dd", new Date(task.createdAt)), // Format to Excel-compatible date
-  //     }))
-  //   );
-  
-  //   console.log(user); // confirm if user object is fetched correctly
-  //   const workbook = XLSX.utils.book_new();
-  //   XLSX.utils.book_append_sheet(workbook, worksheet, 'Tasks');
-  
-  //   // Construct file name using user's first name, last name, and date range
-  //   const start = startDate ? moment(startDate).format('YYYY-MM-DD') : '';
-  //   const end = endDate ? moment(endDate).format('YYYY-MM-DD') : '';
-  //   const dateRange = start && end ? `${start}_to_${end}` : start || end || 'date_range';
-  //   const fileName = `${user.lastName}_${user.firstName}_${dateRange}.xlsx`;
-  
-  //   // Write file
-  //   XLSX.writeFile(workbook, fileName);
-  // };
-  
-
   return (
     <Box maxW="80%" mx="auto" mt={10} p={5} borderWidth={1} borderRadius="lg">
       <Heading as="h3" size="lg" mb={6} textAlign="center">
-        User Dashboard
+        Task Log (Past 7 Days)
       </Heading>
-
-      {/* Date Range Picker */}
-      <Box mb={6} display="flex" justifyContent="center" alignItems="center">
-        <DatePicker
-          selected={startDate}
-          onChange={(date) => setStartDate(date)}
-          selectsStart
-          startDate={startDate}
-          endDate={endDate}
-          placeholderText="Start Date"
-          isClearable
-        />
-        <Box mx={4}>to</Box>
-        <DatePicker
-          selected={endDate}
-          onChange={(date) => setEndDate(date)}
-          selectsEnd
-          startDate={startDate}
-          endDate={endDate}
-          placeholderText="End Date"
-          isClearable
-        />
-        <Button colorScheme="teal" ml={4} onClick={fetchTasks}>
-          Load Tasks
-        </Button>
-        {/* <Button colorScheme="blue" ml={4} onClick={exportToExcel}>
-          Export to Excel
-        </Button> */}
-      </Box>
 
       {/* Task Log Table */}
       <Table variant="striped" colorScheme="teal" mt={4}>
@@ -154,20 +150,19 @@ const UserDashboard = () => {
           </Tr>
         </Thead>
         <Tbody>
-            {tasks.length === 0 ? (
-            <Box textAlign="center" my={4} fontWeight="bold">
-              No tasks found for the selected date range.
-            </Box>
-          ) : (
-            tasks.map((task, index) => (
+          {tasks.map((task, index) => (
               <Tr key={task._id}>
                 <Td>{index + 1}</Td>
                 <Td>{task.queue}</Td>
-                <Td>{moment(task.createdAt).tz('America/New_York').format('MM/DD/YYYY h:mm a z')}</Td>
+                <Td>
+                  {moment(task.createdAt)
+                    .tz('America/New_York')
+                    .format('MM/DD/YYYY h:mm a z')}
+                </Td>
                 <Td>{formatTimeElapsed(task.timeSpent)}</Td>
               </Tr>
             ))
-          )}
+          }
         </Tbody>
       </Table>
     </Box>
