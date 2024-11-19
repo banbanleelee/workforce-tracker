@@ -135,36 +135,26 @@ router.put('/:id', verifyToken('teamMember'), async (req, res) => {
 // Update a task's completion status or details, including startDate and endDate (Team Member View)
 router.put('/complete/:taskId', verifyToken('teamMember'), async (req, res) => {
   const { taskId } = req.params;
-  const { timeSpent, completed, startDate, endDate } = req.body;
+  const { timeSpent, completed } = req.body;
 
-  // Validate `timeSpent` if provided
   if (timeSpent && (typeof timeSpent !== 'number' || timeSpent < 0)) {
     return res.status(400).json({ error: 'Invalid timeSpent value' });
   }
 
-  // Validate `completed` if provided
   if (typeof completed !== 'undefined' && typeof completed !== 'boolean') {
     return res.status(400).json({ error: 'Invalid completed value' });
   }
 
   try {
-    // Construct the update object based on provided fields
-    const updateFields = {};
-    
-    if (typeof timeSpent === 'number') {
-      updateFields['tasks.$.timeSpent'] = timeSpent;
-    }
+    // Construct the update object
+    const updateFields = {
+      'tasks.$.completed': completed,
+      'tasks.$.timeSpent': timeSpent,
+    };
 
-    if (typeof completed === 'boolean') {
-      updateFields['tasks.$.completed'] = completed;
-    }
-
-    if (startDate) {
-      updateFields['tasks.$.startDate'] = new Date(startDate);
-    }
-
-    if (endDate) {
-      updateFields['tasks.$.endDate'] = new Date(endDate);
+    if (completed) {
+      // Set endDate to the current time only if the task is marked as completed
+      updateFields['tasks.$.endDate'] = new Date();
     }
 
     // Find the user and update the specific task
@@ -187,6 +177,7 @@ router.put('/complete/:taskId', verifyToken('teamMember'), async (req, res) => {
     res.status(500).json({ error: 'Server Error', details: error.message });
   }
 });
+
 
 // Fetch current tasks of all team members (Admin view)
 router.get('/current-tasks', verifyToken('admin'), async (req, res) => {

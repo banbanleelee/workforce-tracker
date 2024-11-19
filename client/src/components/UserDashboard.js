@@ -146,23 +146,41 @@ const UserDashboard = () => {
             <Th>Queue #</Th>
             <Th>Queue Name</Th>
             <Th>Start Time</Th>
+            <Th>End Time</Th>
             <Th>Time Spent</Th>
           </Tr>
         </Thead>
         <Tbody>
-          {tasks.map((task, index) => (
+          {tasks.map((task, index) => {
+            console.log("Rendering Task:", {
+              queue: task.queue,
+              startDate: task.startDate,
+              endDate: task.endDate,
+              timeSpent: task.timeSpent
+            });
+
+            return (
               <Tr key={task._id}>
                 <Td>{index + 1}</Td>
                 <Td>{task.queue}</Td>
                 <Td>
-                  {moment(task.createdAt)
-                    .tz('America/New_York')
-                    .format('MM/DD/YYYY h:mm a z')}
+                  {task.startDate
+                    ? moment(task.startDate)
+                        .tz('America/New_York')
+                        .format('MM/DD/YYYY h:mm a z')
+                    : 'N/A'}
+                </Td>
+                <Td>
+                  {task.endDate
+                    ? moment(task.endDate)
+                        .tz('America/New_York')
+                        .format('MM/DD/YYYY h:mm a z')
+                    : 'N/A'}
                 </Td>
                 <Td>{formatTimeElapsed(task.timeSpent)}</Td>
               </Tr>
-            ))
-          }
+            );
+          })}
         </Tbody>
       </Table>
     </Box>

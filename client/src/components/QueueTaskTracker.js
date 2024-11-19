@@ -57,7 +57,7 @@ const QueueTaskTracker = () => {
         setLockedQueue(latestIncompleteTask.queue); // Lock the queue for the ongoing task
 
         // Calculate elapsed time based on the task's creation time
-        const elapsedTime = Math.floor((Date.now() - new Date(latestIncompleteTask.createdAt)) / 1000);
+        const elapsedTime = Math.floor((Date.now() - new Date(latestIncompleteTask.startDate)) / 1000);
         setTimeElapsed(elapsedTime);
       } else {
         setActiveTask(null);
@@ -191,9 +191,9 @@ const QueueTaskTracker = () => {
   
   const handleTaskComplete = async () => {
     if (activeTask) {
-      // Stop timer and calculate time spent
       try {
         const totalSeconds = timeElapsed;
+  
         const response = await axios.put(`${API_BASE_URL}/api/tasks/complete/${activeTask.taskId}`, {
           timeSpent: totalSeconds,
           completed: true,
@@ -220,7 +220,7 @@ const QueueTaskTracker = () => {
         handleTaskSaveError(error);
       }
     }
-  }; 
+  };
 
   const handlePauseResume = () => {
     setIsPaused(!isPaused);
@@ -288,11 +288,21 @@ const QueueTaskTracker = () => {
               .filter(task => task.completed) // Only include completed tasks
               .map((task, index) => (
                 <tr key={task._id}>
-                  <td style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'center', fontSize: '14px', whiteSpace: 'nowrap' }}>{index + 1}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '8px', fontSize: '14px', whiteSpace: 'nowrap' }}>{task.queue}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '8px', fontSize: '14px', whiteSpace: 'nowrap' }}>{moment(task.createdAt).tz(moment.tz.guess()).format('h:mm a z')}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '8px', fontSize: '14px', whiteSpace: 'nowrap' }}>{moment(task.updatedAt).tz(moment.tz.guess()).format('h:mm a z')}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '8px', fontSize: '14px', whiteSpace: 'nowrap' }}>{formatTimeElapsed(task.timeSpent)}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'center', fontSize: '14px', whiteSpace: 'nowrap' }}>
+                    {index + 1}
+                  </td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px', fontSize: '14px', whiteSpace: 'nowrap' }}>
+                    {task.queue}
+                  </td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px', fontSize: '14px', whiteSpace: 'nowrap' }}>
+                    {task.startDate ? moment(task.startDate).tz('America/New_York').format('h:mm a z') : 'N/A'}
+                  </td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px', fontSize: '14px', whiteSpace: 'nowrap' }}>
+                    {task.endDate ? moment(task.endDate).tz('America/New_York').format('h:mm a z') : 'N/A'}
+                  </td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px', fontSize: '14px', whiteSpace: 'nowrap' }}>
+                    {formatTimeElapsed(task.timeSpent)}
+                  </td>
                 </tr>
               ))}
           </tbody>
