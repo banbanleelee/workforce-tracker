@@ -35,6 +35,7 @@ const QueueTaskTracker = () => {
     'Chapel',
     'Break',
     'Training',
+    'Lunch',
   ];
 
   // Fetch today's tasks for the logged-in user
