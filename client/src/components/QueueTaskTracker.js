@@ -36,6 +36,8 @@ const QueueTaskTracker = () => {
     'Break',
     'Training',
     'Lunch',
+    'IT Issue',
+    'PCS Email Inbox',
   ];
 
   // Fetch today's tasks for the logged-in user
