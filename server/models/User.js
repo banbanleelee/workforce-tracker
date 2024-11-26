@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { v4: uuidv4 } = require('uuid');
 
 // Define Task Schema
 const taskSchema = new mongoose.Schema({
@@ -6,11 +7,6 @@ const taskSchema = new mongoose.Schema({
     type: String,
     required: true,
     default: () => uuidv4(), // Generate a unique ID for each task
-    unique: true,
-  },
-  timeSpent: {
-    type: Number,
-    required: true,
   },
   queue: {
     type: String,
@@ -32,6 +28,21 @@ const taskSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
+// Define a virtual property for timeSpent
+taskSchema.virtual('timeSpent').get(function () {
+  if (this.startDate && this.endDate) {
+    // Calculate the difference between endDate and startDate in milliseconds
+    const timeDifference = this.endDate - this.startDate;
+    // Convert the difference to seconds
+    return Math.floor(timeDifference / 1000);
+  }
+  // Return 0 if either startDate or endDate is not set
+  return 0;
+});
+
+// Ensure virtual fields are serialized
+taskSchema.set('toJSON', { virtuals: true });
+taskSchema.set('toObject', { virtuals: true });
 
 // Define User Schema
 const userSchema = new mongoose.Schema({

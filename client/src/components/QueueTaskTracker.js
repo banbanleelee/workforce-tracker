@@ -225,10 +225,6 @@ const QueueTaskTracker = () => {
     }
   };
 
-  const handlePauseResume = () => {
-    setIsPaused(!isPaused);
-  };
-
   return (
     <Box maxW={{ base: '100%', md: '66vw' }} mx="auto" mt={10} p={5} borderWidth={1} borderRadius="lg">
       <Heading as="h3" size="lg" mb={4} textAlign="center">

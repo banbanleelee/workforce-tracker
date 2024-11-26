@@ -98,8 +98,7 @@ router.get('/today', verifyToken('teamMember'), async (req, res) => {
     const todayTasks = user.tasks.filter(task => {
       const taskStartDate = new Date(task.startDate);
       return taskStartDate >= startOfDay && taskStartDate <= endOfDay;
-    });
-
+    }).map(task => task.toObject({ virtuals: true })); // Include virtuals in the task
     res.status(200).json(todayTasks);
   } catch (error) {
     console.error('Error fetching today\'s tasks:', error);

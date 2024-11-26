@@ -7,6 +7,7 @@ import QueueTaskTracker from './components/QueueTaskTracker';
 import Header from './components/Header';
 import UserDashboard from './components/UserDashboard';
 import AdminDashboard from './components/AdminDashboard';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -16,9 +17,31 @@ function App() {
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/signup" element={<Signup />}/>
-          <Route path="/task-tracker" element={<QueueTaskTracker />} />
-          <Route path="/user-dashboard" element={<UserDashboard/>} />
-          <Route path="/admin-dashboard" element={<AdminDashboard/>} />
+          {/* Protect the routes with ProtectedRoute component */}
+          <Route
+            path="/task-tracker"
+            element={
+              <ProtectedRoute>
+                <QueueTaskTracker />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/user-dashboard"
+            element={
+              <ProtectedRoute>
+                <UserDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin-dashboard"
+            element={
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </Router>
     </ChakraProvider>
