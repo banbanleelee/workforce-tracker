@@ -377,6 +377,84 @@ const AdminDashboard = () => {
     return '00:00:00'; // Default value if invalid
   };
  
+  const addTaskForTeamMember = async (userId, taskDetails) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/api/tasks/add-task/${userId}`,
+        taskDetails,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      toast({
+        title: 'Success',
+        description: 'Task added successfully.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+  
+      // Fetch updated tasks
+      fetchTasksByDateRange();
+    } catch (error) {
+      console.error('Error adding task:', error.response ? error.response.data : error.message);
+      toast({
+        title: 'Error',
+        description: `Failed to add task: ${error.response ? error.response.data.error : 'Unknown error'}`,
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    console.log('Deleting task with ID:', taskId); // Add this line to check the value of taskId
+    
+    if (!taskId) {
+      toast({
+        title: 'Error',
+        description: 'Task ID is invalid or missing.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+  
+    try {
+      await axios.delete(`${API_BASE_URL}/api/tasks/delete-task/${taskId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      });
+      toast({
+        title: 'Success',
+        description: 'Task deleted successfully.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+  
+      // Re-fetch tasks if needed
+      fetchTasksByDateRange();
+    } catch (error) {
+      console.error('Error deleting task:', error.response ? error.response.data : error.message);
+      toast({
+        title: 'Error',
+        description: `Failed to delete task: ${error.response ? error.response.data.error : 'Unknown error'}`,
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+  
+  
+  
   return (
     <Box maxW="80%" mx="auto" mt={10} p={5} borderWidth={1} borderRadius="lg">
       <Heading as="h3" size="lg" mb={6} textAlign="center">
@@ -603,6 +681,15 @@ const AdminDashboard = () => {
                             </Td>
                             <Td textAlign="center" fontSize="sm" whiteSpace="normal" overflow="hidden" textOverflow="ellipsis">
                               {calculateTimeSpent(taskInEdit.startDate, taskInEdit.endDate)}
+                            </Td>
+                            <Td>
+                              <Button
+                                colorScheme="red"
+                                onClick={() => handleDeleteTask(task.userId, task.taskId)}
+                                size="sm"
+                              >
+                                Delete
+                              </Button>
                             </Td>
                           </Tr>
                         );
