@@ -40,6 +40,7 @@ const QueueTaskTracker = () => {
     'PCS Email Inbox',
     'LinkedIn Learning',
     'Meeting',
+    'Aged Calls Cleaning',
   ];
 
   // Fetch today's tasks for the logged-in user
