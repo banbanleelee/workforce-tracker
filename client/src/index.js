@@ -4,11 +4,14 @@ import { ChakraProvider } from '@chakra-ui/react';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { QueueProvider } from './context/QueueContext'; 
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <ChakraProvider>
-    <App />
+    <QueueProvider>
+      <App />
+    </QueueProvider>
   </ChakraProvider>
 );
 

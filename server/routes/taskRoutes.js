@@ -364,7 +364,10 @@ router.put('/update-task/:taskId', verifyToken('admin'), async (req, res) => {
 
     // Update task fields
     if (startDate) task.startDate = new Date(startDate);
-    if (endDate) task.endDate = new Date(endDate);
+    if (endDate) {
+      task.endDate = new Date(endDate);
+      task.completed = true; // Mark task as completed if endDate is updated
+    }
 
     // Optionally, recalculate timeSpent if both startDate and endDate are provided
     if (startDate && endDate) {
@@ -417,33 +420,34 @@ router.post('/add-task/:userId', verifyToken('admin'), async (req, res) => {
 });
 
 // Delete a specific task for a team member (Admin View)
-router.delete('/delete-task/:userId/:taskId', verifyToken('admin'), async (req, res) => {
-  const { userId, taskId } = req.params;
+router.delete('/delete-task/:taskId', verifyToken('admin'), async (req, res) => {
+  const { taskId } = req.params;
+
+  console.log('Received taskId:', taskId);
 
   try {
-    // Find the user by ID
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    // Convert the taskId to a MongoDB ObjectId
+    const objectIdTaskId = new mongoose.Types.ObjectId(taskId);
 
-    // Find and remove the task from user's tasks array
-    const taskIndex = user.tasks.findIndex(task => task.taskId === taskId);
-    if (taskIndex === -1) {
+    // Find the user by the task's ObjectId and remove the task
+    const user = await User.findOneAndUpdate(
+      { 'tasks._id': objectIdTaskId }, // Match task by ObjectId
+      { $pull: { tasks: { _id: objectIdTaskId } } }, // Remove the task from the array
+      { new: true } // Return the updated user document
+    );
+
+    if (!user) {
+      console.log('No user found with that task ID:', taskId);
       return res.status(404).json({ error: 'Task not found' });
     }
 
-    // Remove the task from the tasks array
-    user.tasks.splice(taskIndex, 1);
-
-    // Save the updated user document
-    await user.save();
-
+    console.log('Task deleted successfully');
     res.status(200).json({ message: 'Task deleted successfully' });
   } catch (error) {
     console.error('Error deleting task:', error);
-    res.status(500).json({ error: 'Server Error', details: error.message });
+    res.status(500).json({ error: 'Server error', details: error.message });
   }
 });
+
 
 module.exports = router;

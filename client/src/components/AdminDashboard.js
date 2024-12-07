@@ -3,6 +3,7 @@ import { Box, Heading, Button, Flex, Table, Tbody, Td, Th, Thead, Tr, useToast, 
 import axios from 'axios';
 import moment from 'moment-timezone';
 import * as XLSX from 'xlsx';
+import AddTask from './AddTask';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
@@ -17,6 +18,7 @@ const AdminDashboard = () => {
   const [realTimeSortConfig, setRealTimeSortConfig] = useState({ key: null, direction: 'ascending' });
   const [downloadSortConfig, setDownloadSortConfig] = useState({ key: null, direction: 'ascending' });
   const [editableTasks, setEditableTasks] = useState({});
+  const [teamMembers, setTeamMembers] = useState([]);
 
   // Helper function to format time into h m s
   const formatTimeElapsed = (seconds) => {
@@ -138,6 +140,17 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchTeamMembers = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/tasks/team-members`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
+      });
+      setTeamMembers(response.data);
+    } catch (error) {
+      console.error('Error fetching team members:', error);
+    }
+  };
+
   useEffect(() => {
     let intervalId;
 
@@ -181,6 +194,9 @@ const AdminDashboard = () => {
     };
   }, [view]);
 
+  useEffect(() => {
+    fetchTeamMembers();
+  }, []);
 
   // Fetch tasks based on date range for all team members
   const fetchTasksByDateRange = async () => {
@@ -377,39 +393,6 @@ const AdminDashboard = () => {
     return '00:00:00'; // Default value if invalid
   };
  
-  const addTaskForTeamMember = async (userId, taskDetails) => {
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/tasks/add-task/${userId}`,
-        taskDetails,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      toast({
-        title: 'Success',
-        description: 'Task added successfully.',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-  
-      // Fetch updated tasks
-      fetchTasksByDateRange();
-    } catch (error) {
-      console.error('Error adding task:', error.response ? error.response.data : error.message);
-      toast({
-        title: 'Error',
-        description: `Failed to add task: ${error.response ? error.response.data.error : 'Unknown error'}`,
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
 
   const handleDeleteTask = async (taskId) => {
     console.log('Deleting task with ID:', taskId); // Add this line to check the value of taskId
@@ -417,7 +400,7 @@ const AdminDashboard = () => {
     if (!taskId) {
       toast({
         title: 'Error',
-        description: 'Task ID is invalid or missing.',
+        description: 'Task ID is invalid or missing!!',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -453,8 +436,14 @@ const AdminDashboard = () => {
     }
   };
   
-  
-  
+  const refreshTasks = () => {
+    if (view === 'realTime') {
+      fetchCurrentTasks(); // Refresh real-time tasks
+    } else if (view === 'browseAndDownload') {
+      fetchTasksByDateRange(); // Refresh tasks for download
+    }
+  };
+
   return (
     <Box maxW="80%" mx="auto" mt={10} p={5} borderWidth={1} borderRadius="lg">
       <Heading as="h3" size="lg" mb={6} textAlign="center">
@@ -466,9 +455,10 @@ const AdminDashboard = () => {
         <Button colorScheme="teal" mr={4} onClick={() => setView('realTime')}>
           Real-Time Data
         </Button>
-        <Button colorScheme="blue" onClick={() => setView('browseAndDownload')}>
+        <Button colorScheme="blue" mr={4} onClick={() => setView('browseAndDownload')}>
           Download Data
         </Button>
+        <AddTask teamMembers={teamMembers} onTaskAdded={refreshTasks} />
       </Flex>
 
       {/* Real-Time Data View */}
@@ -628,6 +618,14 @@ const AdminDashboard = () => {
                       >
                         Time Spent {downloadSortConfig.key === 'timeSpent' ? (downloadSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
                       </Th>
+                      <Th
+                        color="white"
+                        cursor="pointer"
+                        textAlign="center"
+                        whiteSpace="nowrap"
+                      >
+                        Delete Task
+                      </Th>
                     </Tr>
                   </Thead>
                   <Tbody>
@@ -683,13 +681,13 @@ const AdminDashboard = () => {
                               {calculateTimeSpent(taskInEdit.startDate, taskInEdit.endDate)}
                             </Td>
                             <Td>
-                              <Button
-                                colorScheme="red"
-                                onClick={() => handleDeleteTask(task.userId, task.taskId)}
-                                size="sm"
-                              >
-                                Delete
-                              </Button>
+                            <Button
+                              colorScheme="red"
+                              onClick={() => handleDeleteTask(task._id)} // Ensure task._id is being passed here
+                              size="sm"
+                            >
+                              Delete
+                            </Button>
                             </Td>
                           </Tr>
                         );

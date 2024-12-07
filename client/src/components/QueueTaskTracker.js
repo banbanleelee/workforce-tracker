@@ -4,6 +4,7 @@ import ReactSelect from 'react-select';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment-timezone';
+import { useQueues } from '../context/QueueContext';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
@@ -18,28 +19,7 @@ const QueueTaskTracker = () => {
   const navigate = useNavigate();
   const toast = useToast();
 
-  const queues = [
-    'Personal Email',
-    'Personal Queue',
-    'SF Discount Dispute',
-    'CSI Discount Dispute',
-    'CSI Pre-service Dispute',
-    'PCS: Data I Dispute',
-    'PCS: Faircost Dispute',
-    'PCS: Discount Dispute',
-    'PCS: Pre=service Dispute',
-    'PCS: FH Discount Dispute',
-    'PCS: FH Pre-service Dispute',
-    'PCS: MP Discount Dispute',
-    'PCS: MP Pre-service Dispute',
-    'Chapel',
-    'Break',
-    'Training',
-    'Lunch',
-    'IT Issue',
-    'PCS Email Inbox',
-    'LinkedIn Learning',
-  ];
+  const queues = useQueues();
 
   // Fetch today's tasks for the logged-in user
   const fetchTodaysTasks = async () => {
