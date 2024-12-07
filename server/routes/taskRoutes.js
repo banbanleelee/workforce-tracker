@@ -334,7 +334,6 @@ router.get('/all-tasks-by-date', verifyToken('admin'), async (req, res) => {
   }
 });
 
-
 // Update a specific task by its MongoDB ObjectId (Admin View)
 router.put('/update-task/:taskId', verifyToken('admin'), async (req, res) => {
   const { taskId } = req.params;
@@ -362,16 +361,51 @@ router.put('/update-task/:taskId', verifyToken('admin'), async (req, res) => {
       return res.status(404).json({ error: 'Task not found in user tasks' });
     }
 
+    const toEST = (date) => {
+      const estOffset = -5 * 60; // EST offset in minutes
+      return new Date(date.getTime() + date.getTimezoneOffset() * 60000 + estOffset * 60000);
+    };
+
+    const toUTC = (date) => {
+      const estOffset = -5 * 60; // EST offset in minutes
+      return new Date(date.getTime() - date.getTimezoneOffset() * 60000 - estOffset * 60000);
+    };
+
     // Update task fields
-    if (startDate) task.startDate = new Date(startDate);
-    if (endDate) {
-      task.endDate = new Date(endDate);
-      task.completed = true; // Mark task as completed if endDate is updated
+    if (startDate) {
+      const newStartDate = new Date(startDate);
+      task.startDate = newStartDate;
+
+      if (!endDate) {
+        // If endDate is not provided, align it with startDate in EST
+        const currentEndDate = task.endDate ? new Date(task.endDate) : new Date();
+        const estStartDate = toEST(newStartDate);
+        const updatedEndDate = toUTC(new Date(estStartDate)); // Convert back to UTC
+        updatedEndDate.setHours(currentEndDate.getHours());
+        updatedEndDate.setMinutes(currentEndDate.getMinutes());
+        updatedEndDate.setSeconds(currentEndDate.getSeconds());
+        updatedEndDate.setMilliseconds(currentEndDate.getMilliseconds());
+        task.endDate = updatedEndDate;
+        console.log(`Adjusted endDate to match startDate in EST: ${task.endDate}`);
+      }
     }
 
-    // Optionally, recalculate timeSpent if both startDate and endDate are provided
-    if (startDate && endDate) {
-      task.timeSpent = Math.floor((new Date(endDate) - new Date(startDate)) / 1000);
+    if (endDate) {
+      // Update endDate if explicitly provided
+      const newEndDate = new Date(endDate);
+      const estStartDate = toEST(new Date(startDate || task.startDate));
+      const updatedEndDate = toUTC(new Date(estStartDate)); // Convert back to UTC
+      updatedEndDate.setHours(newEndDate.getHours());
+      updatedEndDate.setMinutes(newEndDate.getMinutes());
+      updatedEndDate.setSeconds(newEndDate.getSeconds());
+      updatedEndDate.setMilliseconds(newEndDate.getMilliseconds());
+      task.endDate = updatedEndDate;
+      console.log(`Explicitly updated endDate to align with startDate in EST: ${task.endDate}`);
+    }
+
+    // Recalculate timeSpent if both startDate and endDate are provided
+    if (task.startDate && task.endDate) {
+      task.timeSpent = Math.floor((task.endDate - task.startDate) / 1000);
     }
 
     // Save the updated user document
@@ -383,6 +417,7 @@ router.put('/update-task/:taskId', verifyToken('admin'), async (req, res) => {
     res.status(500).json({ error: 'Server error', details: error.message });
   }
 });
+
 
 // Add a new task for a specific team member (Admin View)
 router.post('/add-task/:userId', verifyToken('admin'), async (req, res) => {

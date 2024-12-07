@@ -54,16 +54,24 @@ app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 // Keep-alive script to prevent Render from spinning down
 const keepAlive = () => {
-  const serverUrl = process.env.SERVER_URL || `http://localhost:${PORT}/health`;
+  const serverUrl = 'https://workforce-tracker-backend.onrender.com/health'; 
 
   setInterval(async () => {
-    try {
-      const response = await axios.get(serverUrl);
-      console.log(`[${new Date().toISOString()}] Keep-alive ping successful: ${response.status}`);
-    } catch (error) { // Use `error` instead of `err`
-      console.error(`[${new Date().toISOString()}] Keep-alive ping failed: ${error.message}`);
+    const now = new Date();
+    const currentHourEST = now.getUTCHours() - 5; 
+
+    // Only send keep-alive pings between 6 AM and 7 PM EST
+    if (currentHourEST >= 6 && currentHourEST < 19) {
+      try {
+        const response = await axios.get(serverUrl);
+        console.log(`[${new Date().toISOString()}] Keep-alive ping successful: ${response.status}`);
+      } catch (err) {
+        console.error(`[${new Date().toISOString()}] Keep-alive ping failed: ${err.message}`);
+      }
+    } else {
+      console.log(`[${new Date().toISOString()}] Outside active hours (6 AM - 6 PM EST). No ping sent.`);
     }
-  }, 5 * 60 * 1000); // Ping every 5 minutes
+  }, 5 * 60 * 1000); // Check every 5 minutes
 };
 
 keepAlive();
