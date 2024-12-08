@@ -12,7 +12,7 @@ export const QueueProvider = ({ children }) => {
     'PCS: Data I Dispute',
     'PCS: Faircost Dispute',
     'PCS: Discount Dispute',
-    'PCS: Pre=service Dispute',
+    'PCS: Pre-service Dispute',
     'PCS: FH Discount Dispute',
     'PCS: FH Pre-service Dispute',
     'PCS: MP Discount Dispute',
