@@ -69,7 +69,7 @@ const keepAlive = () => {
         console.error(`[${new Date().toISOString()}] Keep-alive ping failed: ${err.message}`);
       }
     } else {
-      console.log(`[${new Date().toISOString()}] Outside active hours (6 AM - 6 PM EST). No ping sent.`);
+      console.log(`[${new Date().toISOString()}] Outside active hours (6 AM - 7 PM EST). No ping sent.`);
     }
   }, 5 * 60 * 1000); // Check every 5 minutes
 };

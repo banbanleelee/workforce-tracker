@@ -8,17 +8,40 @@ import AddTask from './AddTask';
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
 const AdminDashboard = () => {
+  const toast = useToast();
+
+  // Function to calculate the current workweek
+  const calculateWorkWeek = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // Sunday = 0, Monday = 1, ..., Saturday = 6
+    const startOfWeek = new Date(today);
+    const endOfWeek = new Date(today);
+  
+    const adjustedDayOfWeek = (dayOfWeek + 1) % 7;   
+    startOfWeek.setDate(today.getDate() - adjustedDayOfWeek);
+    startOfWeek.setHours(0, 0, 0, 0);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+  
+    return {
+      start: moment(startOfWeek).format('YYYY-MM-DD'),
+      end: moment(endOfWeek).format('YYYY-MM-DD'),
+    };
+  };
+
   const [view, setView] = useState('realTime'); // 'realTime' or 'browseAndDownload'
   const [currentTasks, setCurrentTasks] = useState([]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [tasksData, setTasksData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const toast = useToast();
   const [realTimeSortConfig, setRealTimeSortConfig] = useState({ key: null, direction: 'ascending' });
   const [downloadSortConfig, setDownloadSortConfig] = useState({ key: null, direction: 'ascending' });
   const [editableTasks, setEditableTasks] = useState({});
   const [teamMembers, setTeamMembers] = useState([]);
+  const { start, end } = calculateWorkWeek();
+  const [workWeekStartDate, setWorkWeekStartDate] = useState(start);
+  const [workWeekEndDate, setWorkWeekEndDate] = useState(end);
 
   // Helper function to format time into h m s
   const formatTimeElapsed = (seconds) => {
@@ -26,7 +49,7 @@ const AdminDashboard = () => {
     return `${duration.hours()}h ${duration.minutes()}m ${duration.seconds()}s`;
   };
 
-  // Update the requestSort function for each table
+  // Update the requestSort function for each table - Real-Time Data Table Sorting
   const requestRealTimeSort = (key) => {
     let direction = 'ascending';
     if (realTimeSortConfig.key === key && realTimeSortConfig.direction === 'ascending') {
@@ -35,6 +58,7 @@ const AdminDashboard = () => {
     setRealTimeSortConfig({ key, direction });
   };
   
+  //Update the requestSort function for each table - Download Data Table Sorting
   const requestDownloadSort = (key) => {
     let direction = 'ascending';
     if (downloadSortConfig.key === key && downloadSortConfig.direction === 'ascending') {
@@ -104,8 +128,6 @@ const AdminDashboard = () => {
     return 0;
   });
  
-  console.log('sortedTasksData:', sortedTasksData);
-
   // Fetch Current Tasks for Real-Time Monitoring
   const fetchCurrentTasks = async () => {
     setLoading(true);
@@ -140,17 +162,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchTeamMembers = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/api/tasks/team-members`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
-      });
-      setTeamMembers(response.data);
-    } catch (error) {
-      console.error('Error fetching team members:', error);
-    }
-  };
-
+  // Fetch the current tasks periodically when the view is set to 'realTime'.
   useEffect(() => {
     let intervalId;
 
@@ -164,7 +176,7 @@ const AdminDashboard = () => {
     };
   }, [view]);
 
-  // Use an interval to update time spent dynamically for each active task
+ // Use an interval to update time spent dynamically for each active task
   useEffect(() => {
     let intervalId;
 
@@ -192,8 +204,21 @@ const AdminDashboard = () => {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [view]);
+  }, [view]); 
+  
+  // Fetch Team Members for Real-Time Monitoring
+  const fetchTeamMembers = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/tasks/team-members`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
+      });
+      setTeamMembers(response.data);
+    } catch (error) {
+      console.error('Error fetching team members:', error);
+    }
+  };
 
+  // Fetch the list of team members from the server.
   useEffect(() => {
     fetchTeamMembers();
   }, []);
@@ -238,6 +263,13 @@ const AdminDashboard = () => {
       setLoading(false);
     }
   };
+
+  // Synchronize workWeekStartDate and workWeekEndDate with startDate and endDate
+  useEffect(() => {
+    setStartDate(workWeekStartDate);
+    setEndDate(workWeekEndDate);
+  }, [workWeekStartDate, workWeekEndDate]);
+  
 
   // Export tasks to Excel
   const exportToExcel = () => {
@@ -314,7 +346,6 @@ const AdminDashboard = () => {
     });
   };
 
-
   const handleSaveTask = async (taskId) => {
     if (!editableTasks[taskId]) return;
   
@@ -368,7 +399,7 @@ const AdminDashboard = () => {
     }
   };
   
-  // Automatically calculates the time spent between two dates in hh:mm:ss format
+  // Calculate the time spent between two dates in hh:mm:ss format
   const calculateTimeSpent = (startDate, endDate) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -393,7 +424,6 @@ const AdminDashboard = () => {
     return '00:00:00'; // Default value if invalid
   };
  
-
   const handleDeleteTask = async (taskId) => {
     console.log('Deleting task with ID:', taskId); // Add this line to check the value of taskId
     
@@ -443,7 +473,7 @@ const AdminDashboard = () => {
       fetchTasksByDateRange(); // Refresh tasks for download
     }
   };
-
+  
   return (
     <Box maxW="80%" mx="auto" mt={10} p={5} borderWidth={1} borderRadius="lg">
       <Heading as="h3" size="lg" mb={6} textAlign="center">
@@ -536,31 +566,31 @@ const AdminDashboard = () => {
           <Heading as="h4" size="md" mb={4}>
             Download Tasks by Date Range
           </Heading>
-          <Flex justifyContent="center" mb={4}>
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              placeholder="Start Date"
-              mx={2}
-            />
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              placeholder="End Date"
-              mx={2}
-            />
-          </Flex>
+          <Box mb={4}>
+            <Flex alignItems="center">
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                placeholder="Start Date"
+                mr={4} // Add margin between inputs
+              />
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                placeholder="End Date"
+              />
+            </Flex>
+          </Box>
           <Button colorScheme="teal" onClick={fetchTasksByDateRange} mb={4}>
             Fetch Tasks
           </Button>
-
           {loading ? (
             <Spinner size="lg" />
           ) : (
             tasksData.length > 0 && (
-              <Box border="1px" borderColor="gray.200" borderRadius="md" boxShadow="lg" p={4} mt={4}>
+              <Box border="1px" borderColor="gray.200" borderRadius="md" boxShadow="lg" p={4} mt={4} overflowX="auto" maxWidth="100%">
                 <Table variant="simple" colorScheme="teal" size="sm" mt={4}>
                   <Thead bg="teal.600">
                     <Tr>
@@ -589,7 +619,7 @@ const AdminDashboard = () => {
                         textAlign="center"
                         whiteSpace="nowrap"
                       >
-                        Start Date {downloadSortConfig.key === 'dateStarted' ? (downloadSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
+                        Date {downloadSortConfig.key === 'dateStarted' ? (downloadSortConfig.direction === 'ascending' ? '↑' : '↓') : ''}
                       </Th>
                       <Th
                         color="white"
@@ -624,7 +654,7 @@ const AdminDashboard = () => {
                         textAlign="center"
                         whiteSpace="nowrap"
                       >
-                        Delete Task
+                        Delete
                       </Th>
                     </Tr>
                   </Thead>
@@ -651,7 +681,11 @@ const AdminDashboard = () => {
                               <Input
                                 type="date"
                                 value={moment(taskInEdit.startDate).format('YYYY-MM-DD')}
-                                onChange={(e) => handleInputChange(task._id, 'startDateDate', e.target.value)}
+                                onChange={(e) => {
+                                  const newStartDate = e.target.value;
+                                  handleInputChange(task._id, 'startDateDate', newStartDate);
+                                  handleInputChange(task._id, 'endDateDate', newStartDate); // Update endDateDate to match startDateDate
+                                }}
                                 onBlur={() => handleSaveTask(task._id)}
                                 size="sm" // Ensure input is smaller for limited space
                                 width="100%" // Make sure input does not exceed cell boundaries
@@ -680,13 +714,13 @@ const AdminDashboard = () => {
                             <Td textAlign="center" fontSize="sm" whiteSpace="normal" overflow="hidden" textOverflow="ellipsis">
                               {calculateTimeSpent(taskInEdit.startDate, taskInEdit.endDate)}
                             </Td>
-                            <Td>
+                            <Td textAlign="center" fontSize="sm" whiteSpace="normal" overflow="hidden" textOverflow="ellipsis">
                             <Button
                               colorScheme="red"
                               onClick={() => handleDeleteTask(task._id)} // Ensure task._id is being passed here
                               size="sm"
                             >
-                              Delete
+                              x
                             </Button>
                             </Td>
                           </Tr>
