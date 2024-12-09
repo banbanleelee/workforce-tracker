@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, FormControl, FormLabel, Input, Button, Heading, useToast } from '@chakra-ui/react';
+import { Box, FormControl, FormLabel, Input, Button, Heading, useToast, Spinner } from '@chakra-ui/react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,68 +8,104 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:500
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isServerWakingUp, setIsServerWakingUp] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
+
+  const ROLE_ROUTES = {
+    admin: '/admin-dashboard',
+    user: '/task-tracker',
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    // Print values to ensure correctness before making API request
-    console.log('Email:', email);
-    console.log('Password:', password);
+    if (!email || !password) {
+      toast({
+        title: 'Validation Error',
+        description: 'Email and password are required.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setIsServerWakingUp(false);
 
     try {
-      console.log("Attempting to log in...");
       const response = await axios.post(
         `${API_BASE_URL}/api/auth/login`,
         { email, password },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
+        { headers: { 'Content-Type': 'application/json' } }
       );
 
-      console.log("Login response:", response);
       const { token, role } = response.data;
-      console.log('response.data??', response);
-      // Store token in localStorage for persistent login
       localStorage.setItem('authToken', token);
 
       toast({
         title: 'Login Successful',
+        description: 'You have been logged in successfully.',
         status: 'success',
         duration: 3000,
         isClosable: true,
       });
 
-      // Navigate to /task-tracker
-      // navigate('/task-tracker');
-      console.log('role??', role);
-      if (role === 'admin') {
-        navigate('/admin-dashboard');
-      } else {
-        navigate('/task-tracker');
-      }
-
+      navigate(ROLE_ROUTES[role] || '/task-tracker');
     } catch (error) {
-      console.error('Error logging in:', error);
-
       if (error.response) {
-        console.error('Server response with error:', error.response);
-      } else if (error.request) {
-        console.error('No response received:', error.request);
-      } else {
-        console.error('Error message:', error.message);
-      }
+        const { status, data } = error.response;
 
-      toast({
-        title: 'Login Failed',
-        description: error.response?.data?.message || 'Something went wrong. Please try again.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
+        if (status === 404 && data.error === 'User not found') {
+          toast({
+            title: 'Login Failed',
+            description: 'No account found with the provided email.',
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+          });
+        } else if (status === 400 && data.error === 'Invalid credentials') {
+          toast({
+            title: 'Login Failed',
+            description: 'Email or password is incorrect.',
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+          });
+        } else {
+          toast({
+            title: 'Server Error',
+            description: data.error || 'An error occurred. Please try again later.',
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+      } else if (error.request) {
+        if (!isServerWakingUp) {
+          // Inform user the server might be waking up
+          setIsServerWakingUp(true);
+          toast({
+            title: 'Server Starting Up',
+            description: 'The server is waking up due to inactivity. Please wait a moment and try again.',
+            status: 'info',
+            duration: 5000,
+            isClosable: true,
+          });
+        }
+      } else {
+        toast({
+          title: 'Unexpected Error',
+          description: error.message || 'Something went wrong. Please try again later.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -102,8 +138,8 @@ const Login = () => {
           />
         </FormControl>
 
-        <Button colorScheme="teal" type="submit" width="full">
-          Login
+        <Button colorScheme="teal" type="submit" width="full" disabled={isLoading}>
+          {isLoading ? <Spinner size="sm" /> : 'Login'}
         </Button>
       </form>
     </Box>
