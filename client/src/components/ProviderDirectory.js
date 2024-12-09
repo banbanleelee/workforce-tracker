@@ -22,7 +22,7 @@ const ProviderDirectory = () => {
 
   const HIPAA_API_BASE_URL = 'https://www.hipaaspace.com/api/ein/getcodes';
   const HIPAA_API_TOKEN = '124ADC7D37A24F64AD81934F03FE1834EFEDA1903D894F349A6DC3FE506DC1CF';
-  const NPPES_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}api/nppes/search`;
+  const NPPES_API_BASE_URL = `https://${process.env.REACT_APP_API_BASE_URL}/api/nppes/search`;
 
   const [hipaaResults, setHipaaResults] = useState([]);
   const [nppesResults, setNppesResults] = useState([]);
