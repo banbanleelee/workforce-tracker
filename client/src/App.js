@@ -7,7 +7,9 @@ import QueueTaskTracker from './components/QueueTaskTracker';
 import Header from './components/Header';
 import UserDashboard from './components/UserDashboard';
 import AdminDashboard from './components/AdminDashboard';
+import ProviderDirectory from './components/ProviderDirectory';
 import ProtectedRoute from './components/ProtectedRoute';
+import { ProviderContextProvider } from './context/ProviderContext';
 
 function App() {
   return (
@@ -39,6 +41,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/provider-directory"
+            element={
+              <ProtectedRoute>
+                <ProviderContextProvider>
+                  <ProviderDirectory />
+                </ProviderContextProvider>
               </ProtectedRoute>
             }
           />

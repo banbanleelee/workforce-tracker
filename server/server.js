@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -18,6 +17,10 @@ app.use(cors({
 
 // Middleware
 app.use(express.json());
+
+// Mounted nppes api route
+const nppesRoutes = require('./routes/nppesRoutes');
+app.use('/api/nppes', nppesRoutes);
 
 // Health check route for keep-alive
 app.get('/health', (req, res) => res.status(200).send('OK'));
@@ -46,7 +49,7 @@ app.use('/api/tasks', taskRoutes);
 
 // Auth Routes
 const authRoutes = require('./routes/authRoutes');
-app.use('/api/auth', authRoutes); // Mount auth routes
+app.use('/api/auth', authRoutes); 
 
 // Start server
 const PORT = process.env.PORT || 5000;

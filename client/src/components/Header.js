@@ -52,6 +52,11 @@ const Header = () => {
                 Task Tracker
               </Button>
             )}
+            {userRole === 'admin' && (
+              <Button as={Link} to="/provider-directory" target="_blank" colorScheme="teal" variant="outline" mr={2}>
+                Provider Directory
+              </Button>
+            )}
             <Button
               as={Link}
               to={userRole === 'admin' ? '/admin-dashboard' : '/user-dashboard'}
@@ -62,6 +67,7 @@ const Header = () => {
             >
               Dashboard
             </Button>
+            
             <Button onClick={handleLogout} colorScheme="teal" variant="outline">
               Logout
             </Button>
