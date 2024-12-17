@@ -5,7 +5,6 @@ const QueueContext = createContext([]);
 export const QueueProvider = ({ children }) => {
   const queues = [
     'Personal Email',
-    'Personal Queue',
     'SF Discount Dispute',
     'CSI Discount Dispute',
     'CSI Pre-service Dispute',
@@ -26,6 +25,7 @@ export const QueueProvider = ({ children }) => {
     'LinkedIn Learning',
     'Meeting',
     'Aged Calls Cleaning',
+    'Personal Queue',
   ];
 
   return (
