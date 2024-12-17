@@ -4,6 +4,8 @@ const cors = require('cors');
 require('dotenv').config();
 const { updateTasksToCompleted, startTaskUpdater } = require('./jobs/taskUpdater');
 const axios = require('axios');
+const { startEmailScheduler } = require('./jobs/emailScheduler');
+const { sendTestEmail } = require('./jobs/emailScheduler');
 
 const app = express();
 
@@ -40,6 +42,12 @@ mongoose.connect(process.env.MONGO_URI, {
 
     // Schedule task updater to run periodically
     startTaskUpdater();
+
+    // Start the email scheduler
+    startEmailScheduler();
+
+    // Uncomment the following line to send a test email
+    sendTestEmail();
   })
   .catch(err => console.log('MongoDB connection error:', err));
 
