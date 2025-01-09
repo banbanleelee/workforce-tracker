@@ -6,8 +6,8 @@ export const QueueProvider = ({ children }) => {
   const queues = [
     'Personal Email',
     'SF Discount Dispute',
-    'CSI Discount Dispute',
-    'CSI Pre-service Dispute',
+    'Alpha Split: Discount Dispute',
+    'Alpha Split: Pre-service Dispute',
     'PCS: Data I Dispute',
     'PCS: Faircost Dispute',
     'PCS: Discount Dispute',
@@ -16,6 +16,7 @@ export const QueueProvider = ({ children }) => {
     'PCS: FH Pre-service Dispute',
     'PCS: MP Discount Dispute',
     'PCS: MP Pre-service Dispute',
+    'HCBB Data Project',
     'Chapel',
     'Break',
     'Training',
