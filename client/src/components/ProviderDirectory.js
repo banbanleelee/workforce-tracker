@@ -38,14 +38,18 @@ const ProviderDirectory = () => {
   
           return {
             npi: result.number || '',
-            organizationName: basic.organization_name || `${basic.first_name || ''} ${basic.last_name || ''}`.trim(), // Fallback to practitioner's name
+            type: result.enumeration_type || '',
+            organizationName: basic.organization_name || `${basic.last_name || ''} ${basic.name_suffix || ''}, ${basic.first_name || ''}`.trim(), // Fallback to practitioner's name
             address1: address.address_1 || '',
+            address2: address.address_2 || '',
             city: address.city || '',
             state: address.state || '',
             zip: address.postal_code?.substring(0, 5) || '',
             telephoneNumber: address.telephone_number || '',
             taxonomyCode: taxonomy.code || '',
             taxonomyDesc: taxonomy.desc || '',
+            credential: basic.credential || '',
+            gender: basic.gender || '',
             otherNames: otherNames,
           };
         });
@@ -105,14 +109,18 @@ const ProviderDirectory = () => {
           <Thead>
             <Tr>
               <Th>NPI</Th>
-              <Th>Organization Name</Th>
-              <Th>Address 1</Th>
+              <Th>Type</Th>
+              <Th>Name</Th>
+              <Th>Address1</Th>
+              <Th>Address2</Th>
               <Th>City</Th>
               <Th>State</Th>
               <Th>Zip</Th>
               <Th>Telephone Number</Th>
               <Th>Taxonomy Code</Th>
               <Th>Taxonomy Description</Th>
+              <Th>Credential</Th>
+              <Th>Gender</Th>
               <Th>Other Names</Th>
             </Tr>
           </Thead>
@@ -120,14 +128,18 @@ const ProviderDirectory = () => {
             {nppesResults.map((result, index) => (
               <Tr key={index}>
                 <Td>{result.npi}</Td>
+                <Td>{result.type}</Td>
                 <Td>{result.organizationName}</Td>
                 <Td>{result.address1}</Td>
+                <Td>{result.address2}</Td>
                 <Td>{result.city}</Td>
                 <Td>{result.state}</Td>
                 <Td>{result.zip}</Td>
                 <Td>{result.telephoneNumber}</Td>
                 <Td>{result.taxonomyCode}</Td>
                 <Td>{result.taxonomyDesc}</Td>
+                <Td>{result.credential}</Td>
+                <Td>{result.gender}</Td>
                 <Td>{result.otherNames}</Td>
               </Tr>
             ))}
