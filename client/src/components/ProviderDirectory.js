@@ -39,7 +39,7 @@ const ProviderDirectory = () => {
           return {
             npi: result.number || '',
             type: result.enumeration_type || '',
-            organizationName: basic.organization_name || `${basic.last_name || ''} ${basic.name_suffix || ''}, ${basic.first_name || ''}`.trim(), // Fallback to practitioner's name
+            organizationName: basic.organization_name || '', // Fallback to practitioner's name
             address1: address.address_1 || '',
             address2: address.address_2 || '',
             city: address.city || '',
@@ -50,6 +50,8 @@ const ProviderDirectory = () => {
             taxonomyDesc: taxonomy.desc || '',
             credential: basic.credential || '',
             gender: basic.gender || '',
+            firstName: basic.first_name || '',
+            lastName: `${basic.last_name || ''} ${basic.name_suffix || ''}`.trim(),
             otherNames: otherNames,
           };
         });
@@ -110,7 +112,7 @@ const ProviderDirectory = () => {
             <Tr>
               <Th>NPI</Th>
               <Th>Type</Th>
-              <Th>Name</Th>
+              <Th>Org Name</Th>
               <Th>Address1</Th>
               <Th>Address2</Th>
               <Th>City</Th>
@@ -121,6 +123,8 @@ const ProviderDirectory = () => {
               <Th>Taxonomy Description</Th>
               <Th>Credential</Th>
               <Th>Gender</Th>
+              <Th>First Name</Th>
+              <Th>Last Name</Th>
               <Th>Other Names</Th>
             </Tr>
           </Thead>
@@ -140,6 +144,8 @@ const ProviderDirectory = () => {
                 <Td>{result.taxonomyDesc}</Td>
                 <Td>{result.credential}</Td>
                 <Td>{result.gender}</Td>
+                <Td>{result.firstName}</Td>
+                <Td>{result.lastName}</Td>
                 <Td>{result.otherNames}</Td>
               </Tr>
             ))}
