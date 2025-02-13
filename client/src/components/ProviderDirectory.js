@@ -38,8 +38,10 @@ const ProviderDirectory = () => {
       if (response.data.results) {
         // Extract relevant data from the API response
         const extractedResults = response.data.results.map((result) => {
-          const address = result.addresses?.[0] || {};
-          const taxonomy = result.taxonomies?.[0] || {};
+          // Filter addresses to only include the one with address_purpose: "LOCATION"
+          const locationAddress = result.addresses?.find(addr => addr.address_purpose === "LOCATION") || {};
+          // Filter taxonomies to only include the one with primary: true
+          const primaryTaxonomy = result.taxonomies?.find(tax => tax.primary === true) || {};
           const otherNames = result.other_names?.map((name) => `${name.type} ${name.organization_name}`).join(', ') || '';
           const basic = result.basic || {};
 
@@ -47,14 +49,14 @@ const ProviderDirectory = () => {
             npi: result.number || '',
             type: result.enumeration_type || '',
             organizationName: basic.organization_name || '', // Fallback to practitioner's name
-            address1: address.address_1 || '',
-            address2: address.address_2 || '',
-            city: address.city || '',
-            state: address.state || '',
-            zip: address.postal_code?.substring(0, 5) || '',
-            telephoneNumber: address.telephone_number || '',
-            taxonomyCode: taxonomy.code || '',
-            taxonomyDesc: taxonomy.desc || '',
+            address1: locationAddress.address_1 || '',
+            address2: locationAddress.address_2 || '',
+            city: locationAddress.city || '',
+            state: locationAddress.state || '',
+            zip: locationAddress.postal_code?.substring(0, 5) || '',
+            telephoneNumber: locationAddress.telephone_number || '',
+            taxonomyCode: primaryTaxonomy.code || '',
+            taxonomyDesc: primaryTaxonomy.desc || '',
             credential: basic.credential || '',
             gender: basic.gender || '',
             firstName: basic.first_name || '',
@@ -94,6 +96,8 @@ const ProviderDirectory = () => {
 
   // Function to handle pasted NPIs
   const handlePasteNPIs = async () => {
+    // Clear previous results
+    setNppesResults([]);
     // Try splitting by \r\n, \r, \n, or space, and also remove non-numeric characters
     // THIS IS THE LINE THAT WAS MODIFIED
     const npis = pastedNPIs
