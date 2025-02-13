@@ -94,9 +94,13 @@ const ProviderDirectory = () => {
 
   // Function to handle pasted NPIs
   const handlePasteNPIs = async () => {
-    // Split the pasted NPIs by newline, trim whitespace, and filter out empty strings
-    // THIS IS THE LINE THE USER WAS ASKING ABOUT
-    const npis = pastedNPIs.split('\n').map((npi) => npi.trim()).filter(npi => npi !== '');
+    // Try splitting by \r\n, \r, \n, or space, and also remove non-numeric characters
+    // THIS IS THE LINE THAT WAS MODIFIED
+    const npis = pastedNPIs
+      .split(/\r\n|\r|\n|\s+/) // Split by \r\n, \r, \n, or one or more spaces
+      .map((npi) => npi.replace(/\D/g, '')) // Remove non-numeric characters
+      .map((npi) => npi.trim()) // Trim whitespace
+      .filter((npi) => npi !== ''); // Filter out empty strings
 
     // Check if any NPIs were pasted
     if (npis.length === 0) {
@@ -105,7 +109,7 @@ const ProviderDirectory = () => {
         description: 'Please paste NPIs into the input box.',
         status: 'warning',
         duration: 3000,
-        isClosable: true,
+      isClosable: true,
       });
       return;
     }
