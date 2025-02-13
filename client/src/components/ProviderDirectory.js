@@ -15,20 +15,28 @@ import {
 } from '@chakra-ui/react';
 
 const ProviderDirectory = () => {
+  // Initialize the toast utility from Chakra UI
   const toast = useToast();
 
+  // Define the base URL for the NPPES API
   const NPPES_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/nppes/search`;
 
+  // State to store the results fetched from the NPPES API
   const [nppesResults, setNppesResults] = useState([]);
+  // State to store the NPIs pasted by the user
   const [pastedNPIs, setPastedNPIs] = useState('');
 
-  // Fetch NPI from NPPES API
+  // Function to fetch NPI data from the NPPES API
   const fetchNPI = async (npi) => {
     try {
+      // Construct the API URL with the NPI
       const apiUrl = `${NPPES_API_BASE_URL}?number=${npi}`;
+      // Make a GET request to the API
       const response = await axios.get(apiUrl);
 
+      // Check if the API returned results
       if (response.data.results) {
+        // Extract relevant data from the API response
         const extractedResults = response.data.results.map((result) => {
           const address = result.addresses?.[0] || {};
           const taxonomy = result.taxonomies?.[0] || {};
@@ -64,6 +72,7 @@ const ProviderDirectory = () => {
           return uniqueResults;
         });
       } else {
+        // Show a toast notification if no results are found
         toast({
           title: `No Results Found for NPI ${npi}`,
           status: 'warning',
@@ -72,6 +81,7 @@ const ProviderDirectory = () => {
         });
       }
     } catch (error) {
+      // Show a toast notification if there's an error fetching the NPI
       toast({
         title: `Error Fetching NPI for ${npi}`,
         description: error.message,
@@ -82,16 +92,33 @@ const ProviderDirectory = () => {
     }
   };
 
-  // Handle pasted NPIs
+  // Function to handle pasted NPIs
   const handlePasteNPIs = async () => {
+    // Split the pasted NPIs by newline, trim whitespace, and filter out empty strings
+    // THIS IS THE LINE THE USER WAS ASKING ABOUT
     const npis = pastedNPIs.split('\n').map((npi) => npi.trim()).filter(npi => npi !== '');
+
+    // Check if any NPIs were pasted
+    if (npis.length === 0) {
+      toast({
+        title: 'No NPIs Found',
+        description: 'Please paste NPIs into the input box.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    // Iterate through each NPI and fetch data
     for (const npi of npis) {
       await fetchNPI(npi);
     }
   };
 
-  // Handle input change
+  // Function to handle changes in the input box
   const handleInputChange = (event) => {
+    // Update the pastedNPIs state with the current input value
     setPastedNPIs(event.target.value);
   };
 
