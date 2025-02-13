@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { useProviderContext } from '../context/ProviderContext';
+import React, { useState } from 'react';
 import axios from 'axios';
 import {
   Box,
@@ -10,32 +9,32 @@ import {
   Th,
   Td,
   Heading,
-  VStack,
   Button,
   useToast,
+  Input,
 } from '@chakra-ui/react';
 
 const ProviderDirectory = () => {
-  const { staticNPIs } = useProviderContext();
   const toast = useToast();
 
   const NPPES_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/nppes/search`;
 
   const [nppesResults, setNppesResults] = useState([]);
+  const [pastedNPIs, setPastedNPIs] = useState('');
 
   // Fetch NPI from NPPES API
   const fetchNPI = async (npi) => {
     try {
       const apiUrl = `${NPPES_API_BASE_URL}?number=${npi}`;
       const response = await axios.get(apiUrl);
-  
+
       if (response.data.results) {
         const extractedResults = response.data.results.map((result) => {
           const address = result.addresses?.[0] || {};
           const taxonomy = result.taxonomies?.[0] || {};
           const otherNames = result.other_names?.map((name) => `${name.type} ${name.organization_name}`).join(', ') || '';
           const basic = result.basic || {};
-  
+
           return {
             npi: result.number || '',
             type: result.enumeration_type || '',
@@ -55,7 +54,7 @@ const ProviderDirectory = () => {
             otherNames: otherNames,
           };
         });
-  
+
         // Deduplicate results before setting state
         setNppesResults((prevResults) => {
           const combinedResults = [...prevResults, ...extractedResults];
@@ -82,25 +81,38 @@ const ProviderDirectory = () => {
       });
     }
   };
-  
 
-  // Fetch all NPIs
-  const fetchAllNPIs = async () => {
-    for (const npi of staticNPIs) {
+  // Handle pasted NPIs
+  const handlePasteNPIs = async () => {
+    const npis = pastedNPIs.split('\n').map((npi) => npi.trim()).filter(npi => npi !== '');
+    for (const npi of npis) {
       await fetchNPI(npi);
     }
   };
 
-  // Initial data fetching
-  useEffect(() => {
-    fetchAllNPIs();
-  }, [staticNPIs]);
+  // Handle input change
+  const handleInputChange = (event) => {
+    setPastedNPIs(event.target.value);
+  };
 
   return (
     <Box p={4}>
       <Heading as="h1" size="lg" mb={6}>
         Provider Directory
       </Heading>
+
+      {/* Input for Pasting NPIs */}
+      <Box mb={4}>
+        <Input
+          type="text"
+          placeholder="Paste NPIs here, each on a new line"
+          value={pastedNPIs}
+          onChange={handleInputChange}
+        />
+        <Button mt={2} colorScheme="teal" onClick={handlePasteNPIs}>
+          Fetch NPIs
+        </Button>
+      </Box>
 
       {/* NPPES Results */}
       <Box>
