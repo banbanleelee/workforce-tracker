@@ -26,7 +26,109 @@ const ProviderDirectory = () => {
   const [lastName, setLastName] = useState('');
   const [state, setState] = useState('');
 
-  // ... (existing fetchNPI and handlePasteNPIs functions)
+  // Function to handle changes in the input box
+  const handleInputChange = (event) => {
+    // Update the pastedNPIs state with the current input value
+    setPastedNPIs(event.target.value);
+  };
+
+  // Function to handle pasted NPIs
+  const handlePasteNPIs = async () => {
+    // Clear previous results
+    setNppesResults([]);
+    // Try splitting by \r\n, \r, \n, or space, and also remove non-numeric characters
+    // THIS IS THE LINE THAT WAS MODIFIED
+    const npis = pastedNPIs
+      .split(/\r\n|\r|\n|\s+/) // Split by \r\n, \r, \n, or one or more spaces
+      .map((npi) => npi.replace(/\D/g, '')) // Remove non-numeric characters
+      .map((npi) => npi.trim()) // Trim whitespace
+      .filter((npi) => npi !== ''); // Filter out empty strings
+
+    // Check if any NPIs were pasted
+    if (npis.length === 0) {
+      toast({
+        title: 'No NPIs Found',
+        description: 'Please paste NPIs into the input box.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    // Iterate through each NPI and fetch data
+    for (const npi of npis) {
+      await fetchNPI(npi);
+    }
+  };
+
+  // Function to fetch NPI data from the NPPES API
+  const fetchNPI = async (npi) => {
+    try {
+      // Construct the API URL with the NPI
+      const apiUrl = `${NPPES_API_BASE_URL}?number=${npi}`;
+      // Make a GET request to the API
+      const response = await axios.get(apiUrl);
+
+      // Check if the API returned results
+      if (response.data.results) {
+        // Extract relevant data from the API response
+        const extractedResults = response.data.results.map((result) => {
+          // Filter addresses to only include the one with address_purpose: "LOCATION"
+          const locationAddress = result.addresses?.find(addr => addr.address_purpose === "LOCATION") || {};
+          // Filter taxonomies to only include the one with primary: true
+          const primaryTaxonomy = result.taxonomies?.find(tax => tax.primary === true) || {};
+          const otherNames = result.other_names?.map((name) => `${name.type} ${name.organization_name}`).join(', ') || '';
+          const basic = result.basic || {};
+
+          return {
+            npi: result.number || '',
+            type: result.enumeration_type || '',
+            organizationName: basic.organization_name || '', // Fallback to practitioner's name
+            address1: locationAddress.address_1 || '',
+            address2: locationAddress.address_2 || '',
+            city: locationAddress.city || '',
+            state: locationAddress.state || '',
+            zip: locationAddress.postal_code?.substring(0, 5) || '',
+            telephoneNumber: locationAddress.telephone_number || '',
+            taxonomyCode: primaryTaxonomy.code || '',
+            taxonomyDesc: primaryTaxonomy.desc || '',
+            credential: basic.credential || '',
+            gender: basic.gender || '',
+            firstName: basic.first_name || '',
+            lastName: `${basic.last_name || ''} ${basic.name_suffix || ''}`.trim(),
+            otherNames: otherNames,
+          };
+        });
+
+        // Deduplicate results before setting state
+        setNppesResults((prevResults) => {
+          const combinedResults = [...prevResults, ...extractedResults];
+          const uniqueResults = combinedResults.filter(
+            (item, index, self) => index === self.findIndex((t) => t.npi === item.npi)
+          );
+          return uniqueResults;
+        });
+      } else {
+        // Show a toast notification if no results are found
+        toast({
+          title: `No Results Found for NPI ${npi}`,
+          status: 'warning',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
+      // Show a toast notification if there's an error fetching the NPI
+      toast({
+        title: `Error Fetching NPI for ${npi}`,
+        description: error.message,
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
 
   const handleBulkSearch = async () => {
     setNppesResults([]); // Clear previous results
@@ -117,8 +219,6 @@ const ProviderDirectory = () => {
   const handleStateChange = (event) => {
     setState(event.target.value);
   };
-
-  // ... (existing handleInputChange function)
 
   return (
     <Box p={4}>
