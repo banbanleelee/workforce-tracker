@@ -1,4 +1,3 @@
-``
 import React, { useState } from 'react';
 import axios from 'axios';
 import {
@@ -15,7 +14,6 @@ import {
   Input,
   FormControl,
   FormLabel,
-  Textarea,
 } from '@chakra-ui/react';
 
 const ProviderDirectory = () => {
@@ -24,7 +22,8 @@ const ProviderDirectory = () => {
 
   const [nppesResults, setNppesResults] = useState([]);
   const [pastedNPIs, setPastedNPIs] = useState('');
-  const [pastedNames, setPastedNames] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [state, setState] = useState('');
 
   // Function to handle changes in the input box
@@ -95,7 +94,7 @@ const ProviderDirectory = () => {
             taxonomyCode: primaryTaxonomy.code || '',
             taxonomyDesc: primaryTaxonomy.desc || '',
             credential: basic.credential || '',
-            gender: basic.gender || '',
+            sex: basic.sex || '',
             firstName: basic.first_name || '',
             lastName: `${basic.last_name || ''} ${basic.name_suffix || ''}`.trim(),
             otherNames: otherNames,
@@ -133,116 +132,88 @@ const ProviderDirectory = () => {
 
   const handleBulkSearch = async () => {
     setNppesResults([]); // Clear previous results
-    if (!pastedNames || !state) {
+    if (!firstName || !lastName || !state) {
       toast({
         title: 'Missing Fields',
-        description: 'Please paste names and select a state.',
+        description: 'Please fill in first name, last name, and state.',
         status: 'warning',
         duration: 3000,
         isClosable: true,
       });
       return;
     }
-
-    // Parse pasted names and initialize orderedResults
-    const names = pastedNames
-      .split(/[\t\n\r]+/) // Split by tabs, newlines, or carriage return + newline
-      .map((name) => name.trim()) // Trim whitespace
-      .filter((name) => name !== '') // Filter out empty strings
-      .map((name) => {
-        const [lastName, firstName] = name.split(',').map((part) => part.trim());
-        return { lastName, firstName };
-      })
-      .filter((name) => name.lastName && name.firstName); // Filter out names without both parts
-
-    if (names.length === 0) {
-      toast({
-        title: 'No Valid Names Found',
-        description: 'Please paste names in the format "Last Name, First Name".',
-        status: 'warning',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    const orderedResults = names.map(({ lastName, firstName }) => ({
-      lastName,
-      firstName,
-      result: null,
-    }));
-
-    // Perform API calls and update orderedResults
-    for (const nameObj of orderedResults) {
-      try {
-        const apiUrl = `${NPPES_API_BASE_URL}?version=2.1&state=${state}&first_name=${nameObj.firstName}&last_name=${nameObj.lastName}&limit=1`;
+    let skip = 0;
+    let allResults = [];
+    try {
+      while (skip <= 1000) {
+        const apiUrl = `${NPPES_API_BASE_URL}?version=2.1&first_name=${firstName}&last_name=${lastName}&state=${state}&limit=200&skip=${skip}`;
         const response = await axios.get(apiUrl);
         if (response.data.results && response.data.results.length > 0) {
-          nameObj.result = response.data.results[0]; // Assign the first result
+          const extractedResults = response.data.results.map((result) => {
+            const locationAddress = result.addresses?.find(addr => addr.address_purpose === "LOCATION") || {};
+            const primaryTaxonomy = result.taxonomies?.find(tax => tax.primary === true) || {};
+            const otherNames = result.other_names?.map((name) => `${name.type} ${name.organization_name}`).join(', ') || '';
+            const basic = result.basic || {};
+
+            return {
+              npi: result.number || '',
+              type: result.enumeration_type || '',
+              organizationName: basic.organization_name || '',
+              address1: locationAddress.address_1 || '',
+              address2: locationAddress.address_2 || '',
+              city: locationAddress.city || '',
+              state: locationAddress.state || '',
+              zip: locationAddress.postal_code?.substring(0, 5) || '',
+              telephoneNumber: locationAddress.telephone_number || '',
+              taxonomyCode: primaryTaxonomy.code || '',
+              taxonomyDesc: primaryTaxonomy.desc || '',
+              credential: basic.credential || '',
+              sex: basic.sex || '',
+              firstName: basic.first_name || '',
+              lastName: `${basic.last_name || ''} ${basic.name_suffix || ''}`.trim(),
+              otherNames: otherNames,
+            };
+          });
+          allResults = [...allResults, ...extractedResults];
+          skip += 200;
+        } else {
+          break; // No more results
         }
-      } catch (error) {
+      }
+      if (allResults.length === 0) {
         toast({
-          title: `Error Fetching Provider: ${nameObj.firstName} ${nameObj.lastName}`,
-          description: error.message,
-          status: 'error',
+          title: 'No Results Found',
+          description: `No providers found with the given criteria.`,
+          status: 'warning',
           duration: 3000,
           isClosable: true,
         });
-      }
-    }
-
-    // Prepare final results
-    const finalResults = orderedResults.map((nameObj) => {
-      if (nameObj.result) {
-        const locationAddress = nameObj.result.addresses?.find(addr => addr.address_purpose === "LOCATION") || {};
-        const primaryTaxonomy = nameObj.result.taxonomies?.find(tax => tax.primary === true) || {};
-        const otherNames = nameObj.result.other_names?.map((name) => `${name.type} ${name.organization_name}`).join(', ') || '';
-        const basic = nameObj.result.basic || {};
-        return {
-          npi: nameObj.result.number || '',
-          type: nameObj.result.enumeration_type || '',
-          organizationName: basic.organization_name || '',
-          address1: locationAddress.address_1 || '',
-          address2: locationAddress.address_2 || '',
-          city: locationAddress.city || '',
-          state: locationAddress.state || '',
-          zip: locationAddress.postal_code?.substring(0, 5) || '',
-          telephoneNumber: locationAddress.telephone_number || '',
-          taxonomyCode: primaryTaxonomy.code || '',
-          taxonomyDesc: primaryTaxonomy.desc || '',
-          credential: basic.credential || '',
-          gender: basic.gender || '',
-          firstName: basic.first_name || '',
-          lastName: `${basic.last_name || ''} ${basic.name_suffix || ''}`.trim(),
-          otherNames: otherNames,
-        };
       } else {
-        return {
-          npi: '',
-          type: '',
-          organizationName: '',
-          address1: '',
-          address2: '',
-          city: '',
-          state: '',
-          zip: '',
-          telephoneNumber: '',
-          taxonomyCode: '',
-          taxonomyDesc: '',
-          credential: '',
-          gender: '',
-          firstName: nameObj.firstName,
-          lastName: nameObj.lastName,
-          otherNames: '',
-        };
+        setNppesResults((prevResults) => {
+          const combinedResults = [...prevResults, ...allResults];
+          const uniqueResults = combinedResults.filter(
+            (item, index, self) => index === self.findIndex((t) => t.npi === item.npi)
+          );
+          return uniqueResults;
+        });
       }
-    });
-
-    setNppesResults(finalResults);
+    } catch (error) {
+      toast({
+        title: 'Error Fetching Providers',
+        description: error.message,
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
-  const handlePastedNamesChange = (event) => {
-    setPastedNames(event.target.value);
+  const handleFirstNameChange = (event) => {
+    setFirstName(event.target.value);
+  };
+
+  const handleLastNameChange = (event) => {
+    setLastName(event.target.value);
   };
 
   const handleStateChange = (event) => {
@@ -271,11 +242,21 @@ const ProviderDirectory = () => {
       {/* Input for Bulk Search */}
       <Box mb={4}>
         <FormControl>
-          <FormLabel>Paste Names (Last Name, First Name)</FormLabel>
-          <Textarea
-            placeholder="Paste names here, each on a new line or tab"
-            value={pastedNames}
-            onChange={handlePastedNamesChange}
+          <FormLabel>First Name</FormLabel>
+          <Input
+            type="text"
+            placeholder="Enter First Name"
+            value={firstName}
+            onChange={handleFirstNameChange}
+          />
+        </FormControl>
+        <FormControl mt={2}>
+          <FormLabel>Last Name</FormLabel>
+          <Input
+            type="text"
+            placeholder="Enter Last Name"
+            value={lastName}
+            onChange={handleLastNameChange}
           />
         </FormControl>
         <FormControl mt={2}>
@@ -312,7 +293,7 @@ const ProviderDirectory = () => {
               <Th>Taxonomy Code</Th>
               <Th>Taxonomy Description</Th>
               <Th>Credential</Th>
-              <Th>Gender</Th>
+              <Th>Sex</Th>
               <Th>First Name</Th>
               <Th>Last Name</Th>
               <Th>Other Names</Th>
@@ -333,7 +314,7 @@ const ProviderDirectory = () => {
                 <Td>{result.taxonomyCode}</Td>
                 <Td>{result.taxonomyDesc}</Td>
                 <Td>{result.credential}</Td>
-                <Td>{result.gender}</Td>
+                <Td>{result.sex}</Td>
                 <Td>{result.firstName}</Td>
                 <Td>{result.lastName}</Td>
                 <Td>{result.otherNames}</Td>
