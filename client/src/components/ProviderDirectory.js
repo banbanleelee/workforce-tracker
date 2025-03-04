@@ -12,55 +12,19 @@ import {
   Button,
   useToast,
   Input,
-  FormControl,
-  FormLabel,
 } from '@chakra-ui/react';
 
 const ProviderDirectory = () => {
+  // Initialize the toast utility from Chakra UI
   const toast = useToast();
-  const NPPES_API_BASE_URL = 'https://npiregistry.cms.hhs.gov/api/'; // Base URL
 
+  // Define the base URL for the NPPES API
+  const NPPES_API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/api/nppes/search`;
+
+  // State to store the results fetched from the NPPES API
   const [nppesResults, setNppesResults] = useState([]);
+  // State to store the NPIs pasted by the user
   const [pastedNPIs, setPastedNPIs] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [state, setState] = useState('');
-
-  // Function to handle changes in the input box
-  const handleInputChange = (event) => {
-    // Update the pastedNPIs state with the current input value
-    setPastedNPIs(event.target.value);
-  };
-
-  // Function to handle pasted NPIs
-  const handlePasteNPIs = async () => {
-    // Clear previous results
-    setNppesResults([]);
-    // Try splitting by \r\n, \r, \n, or space, and also remove non-numeric characters
-    // THIS IS THE LINE THAT WAS MODIFIED
-    const npis = pastedNPIs
-      .split(/\r\n|\r|\n|\s+/) // Split by \r\n, \r, \n, or one or more spaces
-      .map((npi) => npi.replace(/\D/g, '')) // Remove non-numeric characters
-      .map((npi) => npi.trim()) // Trim whitespace
-      .filter((npi) => npi !== ''); // Filter out empty strings
-
-    // Check if any NPIs were pasted
-    if (npis.length === 0) {
-      toast({
-        title: 'No NPIs Found',
-        description: 'Please paste NPIs into the input box.',
-        status: 'warning',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    // Iterate through each NPI and fetch data
-    for (const npi of npis) {
-      await fetchNPI(npi);
-    }
-  };
 
   // Function to fetch NPI data from the NPPES API
   const fetchNPI = async (npi) => {
@@ -130,94 +94,40 @@ const ProviderDirectory = () => {
     }
   };
 
-  const handleBulkSearch = async () => {
-    setNppesResults([]); // Clear previous results
-    if (!firstName || !lastName || !state) {
+  // Function to handle pasted NPIs
+  const handlePasteNPIs = async () => {
+    // Clear previous results
+    setNppesResults([]);
+    // Try splitting by \r\n, \r, \n, or space, and also remove non-numeric characters
+    // THIS IS THE LINE THAT WAS MODIFIED
+    const npis = pastedNPIs
+      .split(/\r\n|\r|\n|\s+/) // Split by \r\n, \r, \n, or one or more spaces
+      .map((npi) => npi.replace(/\D/g, '')) // Remove non-numeric characters
+      .map((npi) => npi.trim()) // Trim whitespace
+      .filter((npi) => npi !== ''); // Filter out empty strings
+
+    // Check if any NPIs were pasted
+    if (npis.length === 0) {
       toast({
-        title: 'Missing Fields',
-        description: 'Please fill in first name, last name, and state.',
+        title: 'No NPIs Found',
+        description: 'Please paste NPIs into the input box.',
         status: 'warning',
         duration: 3000,
-        isClosable: true,
+      isClosable: true,
       });
       return;
     }
-    let skip = 0;
-    let allResults = [];
-    try {
-      while (skip <= 1000) {
-        const apiUrl = `${NPPES_API_BASE_URL}?version=2.1&first_name=${firstName}&last_name=${lastName}&state=${state}&limit=200&skip=${skip}`;
-        const response = await axios.get(apiUrl);
-        if (response.data.results && response.data.results.length > 0) {
-          const extractedResults = response.data.results.map((result) => {
-            const locationAddress = result.addresses?.find(addr => addr.address_purpose === "LOCATION") || {};
-            const primaryTaxonomy = result.taxonomies?.find(tax => tax.primary === true) || {};
-            const otherNames = result.other_names?.map((name) => `${name.type} ${name.organization_name}`).join(', ') || '';
-            const basic = result.basic || {};
 
-            return {
-              npi: result.number || '',
-              type: result.enumeration_type || '',
-              organizationName: basic.organization_name || '',
-              address1: locationAddress.address_1 || '',
-              address2: locationAddress.address_2 || '',
-              city: locationAddress.city || '',
-              state: locationAddress.state || '',
-              zip: locationAddress.postal_code?.substring(0, 5) || '',
-              telephoneNumber: locationAddress.telephone_number || '',
-              taxonomyCode: primaryTaxonomy.code || '',
-              taxonomyDesc: primaryTaxonomy.desc || '',
-              credential: basic.credential || '',
-              sex: basic.sex || '',
-              firstName: basic.first_name || '',
-              lastName: `${basic.last_name || ''} ${basic.name_suffix || ''}`.trim(),
-              otherNames: otherNames,
-            };
-          });
-          allResults = [...allResults, ...extractedResults];
-          skip += 200;
-        } else {
-          break; // No more results
-        }
-      }
-      if (allResults.length === 0) {
-        toast({
-          title: 'No Results Found',
-          description: `No providers found with the given criteria.`,
-          status: 'warning',
-          duration: 3000,
-          isClosable: true,
-        });
-      } else {
-        setNppesResults((prevResults) => {
-          const combinedResults = [...prevResults, ...allResults];
-          const uniqueResults = combinedResults.filter(
-            (item, index, self) => index === self.findIndex((t) => t.npi === item.npi)
-          );
-          return uniqueResults;
-        });
-      }
-    } catch (error) {
-      toast({
-        title: 'Error Fetching Providers',
-        description: error.message,
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
+    // Iterate through each NPI and fetch data
+    for (const npi of npis) {
+      await fetchNPI(npi);
     }
   };
 
-  const handleFirstNameChange = (event) => {
-    setFirstName(event.target.value);
-  };
-
-  const handleLastNameChange = (event) => {
-    setLastName(event.target.value);
-  };
-
-  const handleStateChange = (event) => {
-    setState(event.target.value);
+  // Function to handle changes in the input box
+  const handleInputChange = (event) => {
+    // Update the pastedNPIs state with the current input value
+    setPastedNPIs(event.target.value);
   };
 
   return (
@@ -236,40 +146,6 @@ const ProviderDirectory = () => {
         />
         <Button mt={2} colorScheme="teal" onClick={handlePasteNPIs}>
           Fetch NPIs
-        </Button>
-      </Box>
-
-      {/* Input for Bulk Search */}
-      <Box mb={4}>
-        <FormControl>
-          <FormLabel>First Name</FormLabel>
-          <Input
-            type="text"
-            placeholder="Enter First Name"
-            value={firstName}
-            onChange={handleFirstNameChange}
-          />
-        </FormControl>
-        <FormControl mt={2}>
-          <FormLabel>Last Name</FormLabel>
-          <Input
-            type="text"
-            placeholder="Enter Last Name"
-            value={lastName}
-            onChange={handleLastNameChange}
-          />
-        </FormControl>
-        <FormControl mt={2}>
-          <FormLabel>State</FormLabel>
-          <Input
-            type="text"
-            placeholder="Enter State"
-            value={state}
-            onChange={handleStateChange}
-          />
-        </FormControl>
-        <Button mt={2} colorScheme="teal" onClick={handleBulkSearch}>
-          Bulk Search
         </Button>
       </Box>
 
@@ -293,7 +169,7 @@ const ProviderDirectory = () => {
               <Th>Taxonomy Code</Th>
               <Th>Taxonomy Description</Th>
               <Th>Credential</Th>
-              <Th>Sex</Th>
+              <Th>sex</Th>
               <Th>First Name</Th>
               <Th>Last Name</Th>
               <Th>Other Names</Th>
