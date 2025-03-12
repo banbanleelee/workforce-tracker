@@ -10,15 +10,15 @@ const { sendTestEmail } = require('./jobs/emailScheduler');
 const app = express();
 
 // Enable CORS with appropriate settings
-app.use(cors({
-  origin: 'https://workforce-tracker.vercel.app', // Allow frontend to access the backend 'https://workforce-tracker.vercel.app'
-  optionSuccessStatus: 200, // For legacy browsers
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow necessary HTTP methods
-  credentials: true // Authorization headers
-}));
-
-// Handle preflight requests
-app.options('*', cors());
+const corsOptions = {
+ origin: 'https://workforce-tracker.vercel.app',
+ methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+ allowedHeaders: ['Content-Type', 'Authorization'],
+ credentials: true
+};
+app.use(cors(corsOptions));
+// Explicitly handle preflight requests
+app.options('*', cors(corsOptions));
 
 // Middleware
 app.use(express.json());
