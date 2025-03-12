@@ -27,6 +27,7 @@ export const QueueProvider = ({ children }) => {
     'Meeting',
     'Aged Calls Cleaning',
     'Personal Queue',
+    'Direct Contracts',
   ];
 
   return (

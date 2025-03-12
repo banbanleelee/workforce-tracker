@@ -8,8 +8,10 @@ import Header from './components/Header';
 import UserDashboard from './components/UserDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import ProviderDirectory from './components/ProviderDirectory';
+import BulkSearch from './components/BulkSearch';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ProviderContextProvider } from './context/ProviderContext';
+
 
 function App() {
   return (
@@ -51,6 +53,15 @@ function App() {
                 <ProviderContextProvider>
                   <ProviderDirectory />
                 </ProviderContextProvider>
+              </ProtectedRoute>
+            }
+          />
+          {/* New Route for Bulk Name & State Search */}
+          <Route
+            path="/bulk-search"
+            element={
+              <ProtectedRoute>
+                <BulkSearch />
               </ProtectedRoute>
             }
           />
