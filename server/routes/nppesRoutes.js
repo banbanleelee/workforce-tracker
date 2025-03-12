@@ -85,7 +85,7 @@ router.post('/bulk-search', async (req, res) => {
                         taxonomyCode: primaryTaxonomy.code || 'N/A',
                         taxonomyDesc: primaryTaxonomy.desc || 'N/A',
                         credential: basic.credential ? basic.credential.replace(/\./g, '') : 'N/A',
-                        sex: basic.gender || 'N/A',
+                        sex: basic.sex || 'N/A',
                         otherNames: otherNames,
                     });
                 });
