@@ -3,7 +3,7 @@ import { Box, FormControl, FormLabel, Input, Button, Heading, useToast, Spinner 
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = 'https://workforce-tracker-backend.onrender.com';
 
 const Login = () => {
   const [email, setEmail] = useState('');
