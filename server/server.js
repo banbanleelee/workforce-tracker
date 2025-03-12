@@ -9,6 +9,14 @@ const { sendTestEmail } = require('./jobs/emailScheduler');
 
 const app = express();
 
+//Force all redirects to use HTTPS in server.js
+app.use((req, res, next) => {
+ if (req.headers['x-forwarded-proto'] !== 'https') {
+   return res.redirect(`https://${req.headers.host}${req.url}`);
+ }
+ next();
+});
+
 // Enable CORS with appropriate settings
 const corsOptions = {
  origin: 'https://workforce-tracker.vercel.app',
@@ -18,7 +26,9 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 // Explicitly handle preflight requests
-app.options('*', cors(corsOptions));
+app.options('*', cors(corsOptions), (req, res) => {
+ res.status(200).end();
+});
 
 // Middleware
 app.use(express.json());
