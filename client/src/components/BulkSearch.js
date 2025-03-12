@@ -24,15 +24,25 @@ const BulkSearch = () => {
   const [providerResults, setProviderResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch multiple providers from backend
   const fetchProviders = async (providers) => {
     setLoading(true);
+    setProviderResults([]);
+
+    console.log(`🔍 Initiating search for ${providers.length} providers...`);
+    console.log(`➡️ Request Payload:`, providers);
+
     try {
+      console.log(`🛠 Sending POST request to: ${NPPES_API_BASE_URL}`);
+
       const response = await axios.post(NPPES_API_BASE_URL, { providers });
 
       if (response.data.results && response.data.results.length > 0) {
+        console.log(`✅ Received ${response.data.results.length} results`);
+        console.log(`📄 API Response Data:`, response.data.results);
+
         setProviderResults(response.data.results);
       } else {
+        console.warn(`⚠️ No results found`);
         toast({
           title: 'No results found',
           description: 'No providers matched your search.',
@@ -40,9 +50,9 @@ const BulkSearch = () => {
           duration: 3000,
           isClosable: true,
         });
-        setProviderResults([]);
       }
     } catch (error) {
+      console.error(`❌ Error fetching data:`, error.message);
       toast({
         title: 'Error fetching data',
         description: error.message,
@@ -50,28 +60,40 @@ const BulkSearch = () => {
         duration: 3000,
         isClosable: true,
       });
-      setProviderResults([]);
     }
+
     setLoading(false);
   };
-  
-  // Process pasted input
+
   const handleProcessData = async () => {
     setProviderResults([]);
-    const providers = pastedData
-      .split(/\r\n|\r|\n/)
-      .map((line) => line.trim().split(/\s+/))
-      .filter((parts) => parts.length >= 3)
-      .map(([firstName, lastName, state]) => ({
-        firstName,
-        lastName,
-        state: state.toUpperCase(),
-      }));
+
+    console.log(`📥 Raw Pasted Data:`, pastedData);
+
+    // ✅ Split input into individual words (splitting on spaces)
+    const words = pastedData.trim().split(/\s+/); 
+
+    console.log(`📝 Split Words:`, words);
+
+    // ✅ Process words in groups of 3 (First Name, Last Name, State)
+    const providers = [];
+    for (let i = 0; i < words.length; i += 3) {
+        if (i + 2 < words.length) {
+            providers.push({
+                firstName: words[i],
+                lastName: words[i + 1],
+                state: words[i + 2].toUpperCase(),
+            });
+        }
+    }
+
+    console.log(`📌 Parsed Providers:`, providers);
+    console.log(`🛠 Total Providers Parsed: ${providers.length}`);
 
     if (providers.length === 0) {
       toast({
         title: 'Invalid Input',
-        description: 'Each line must have a first name, last name, and state.',
+        description: 'Please enter names in sets of three (First Name, Last Name, State).',
         status: 'warning',
         duration: 3000,
         isClosable: true,
@@ -80,7 +102,7 @@ const BulkSearch = () => {
     }
 
     await fetchProviders(providers);
-  };
+};
 
   return (
     <Box p={4}>
@@ -101,9 +123,6 @@ const BulkSearch = () => {
 
       {providerResults.length > 0 && (
         <Box>
-          <Heading as="h2" size="md" mb={4}>
-            Search Results
-          </Heading>
           <Table variant="striped" colorScheme="green">
             <Thead>
               <Tr>
@@ -112,17 +131,13 @@ const BulkSearch = () => {
                 <Th>First Name</Th>
                 <Th>Last Name</Th>
                 <Th>Organization</Th>
-                <Th>Address 1</Th>
-                <Th>Address 2</Th>
                 <Th>City</Th>
                 <Th>State</Th>
-                <Th>Zip</Th>
                 <Th>Phone</Th>
-                <Th>Taxonomy Code</Th>
+                <Th>Taxonomy</Th>
                 <Th>Taxonomy Description</Th>
                 <Th>Credential</Th>
                 <Th>Sex</Th>
-                <Th>Other Names</Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -133,17 +148,13 @@ const BulkSearch = () => {
                   <Td>{result.firstName}</Td>
                   <Td>{result.lastName}</Td>
                   <Td>{result.organizationName}</Td>
-                  <Td>{result.address1}</Td>
-                  <Td>{result.address2}</Td>
                   <Td>{result.city}</Td>
                   <Td>{result.state}</Td>
-                  <Td>{result.zip}</Td>
                   <Td>{result.telephoneNumber}</Td>
                   <Td>{result.taxonomyCode}</Td>
                   <Td>{result.taxonomyDesc}</Td>
                   <Td>{result.credential ? result.credential.replace(/\./g, '') : 'N/A'}</Td>
                   <Td>{result.sex}</Td>
-                  <Td>{result.otherNames}</Td>
                 </Tr>
               ))}
             </Tbody>
