@@ -52,11 +52,11 @@ const Header = () => {
                 Task Tracker
               </Button>
             )}
-            {userRole === 'admin' && (
+           
               <Button as={Link} to="/provider-directory" target="_blank" colorScheme="teal" variant="outline" mr={2}>
                 Provider Directory
               </Button>
-            )}
+            
             {/* New Button for Bulk Search */}
             <Button as={Link} to="/bulk-search" target="_blank" colorScheme="teal" variant="outline" mr={2}>
               Bulk Search
