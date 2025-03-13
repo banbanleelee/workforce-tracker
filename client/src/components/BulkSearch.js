@@ -93,7 +93,7 @@ const BulkSearch = () => {
     if (providers.length === 0) {
       toast({
         title: 'Invalid Input',
-        description: 'Please enter names in sets of three (First Name, Last Name, State).',
+        description: 'Please enter names in sets of three (Last Name [space] First Name [space] State). Names need to be in 1 word without space. State only allows the 2-letter acronyms',
         status: 'warning',
         duration: 3000,
         isClosable: true,
@@ -112,7 +112,7 @@ const BulkSearch = () => {
       <Box mb={4}>
         <Input
           type="text"
-          placeholder="Paste names & states (each line: First Last State)"
+          placeholder="Please enter names in sets of three (Last Name [space] First Name [space] State). Names need to be in 1 word without space. State only allows the 2-letter acronyms. :-)"
           value={pastedData}
           onChange={(e) => setPastedData(e.target.value)}
         />
