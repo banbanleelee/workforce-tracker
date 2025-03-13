@@ -80,8 +80,8 @@ const BulkSearch = () => {
     for (let i = 0; i < words.length; i += 3) {
         if (i + 2 < words.length) {
             providers.push({
-                firstName: words[i],
-                lastName: words[i + 1],
+                lastName: words[i],
+                firstName: words[i + 1],
                 state: words[i + 2].toUpperCase(),
             });
         }
