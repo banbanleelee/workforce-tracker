@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
-  Box, Heading, Button, Input, Textarea, Select, Table, Thead, Tbody, Tr, Th, Td, useToast, Spinner,
+  Box, Heading, Button, Input, Textarea, Select, Table, Thead, Tbody, Tr, Th, Td, useToast, Spinner, useDisclosure,
+  AlertDialog, AlertDialogOverlay, AlertDialogContent, AlertDialogHeader, AlertDialogBody, AlertDialogFooter
 } from '@chakra-ui/react';
 import axios from 'axios';
 import moment from 'moment-timezone';
@@ -19,15 +20,23 @@ const FHReferralPortal = () => {
     notes: '',
   });
   const [editingId, setEditingId] = useState(null);
+  const [daysThreshold, setDaysThreshold] = useState(() => localStorage.getItem('referralThreshold') || '');
+  const [includeResolved, setIncludeResolved] = useState(false);
+  const [sortField, setSortField] = useState('');
+  const [sortDirection, setSortDirection] = useState('asc');
   const toast = useToast();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const cancelRef = useRef();
+  const [confirmAction, setConfirmAction] = useState(() => () => {});
+  const [confirmLabel, setConfirmLabel] = useState('');
 
   const fetchReferrals = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/referrals`, {
+      const res = await axios.get(`${API_BASE_URL}/api/referrals`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
       });
-      setReferrals(response.data);
+      setReferrals(res.data);
     } catch (err) {
       toast({ title: 'Error loading referrals', status: 'error' });
     } finally {
@@ -41,79 +50,129 @@ const FHReferralPortal = () => {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleSubmit = async () => {
-    const { issueType, csiId, fhIssueId, fileLink } = form;
-    if (!issueType || !csiId ) {
-      toast({ title: 'Missing required fields', status: 'warning' });
+  const handleSubmit = () => {
+    if (!form.csiId) {
+      toast({ title: 'CSI ID is required', status: 'warning' });
       return;
     }
 
-    try {
-      const token = localStorage.getItem('authToken');
-      if (editingId) {
-        await axios.put(`${API_BASE_URL}/api/referrals/${editingId}`, form, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        toast({ title: 'Referral updated', status: 'success' });
-        setEditingId(null);
-      } else {
-        await axios.post(`${API_BASE_URL}/api/referrals`, form, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        toast({ title: 'Referral created', status: 'success' });
-      }
-
-      setForm({
-        issueType: '',
-        csiId: '',
-        fhIssueId: '',
-        fileLink: '',
-        status: 'In progress',
-        notes: '',
+    if (editingId) {
+      setConfirmLabel('Update');
+      setConfirmAction(() => async () => {
+        try {
+          const token = localStorage.getItem('authToken');
+          await axios.put(`${API_BASE_URL}/api/referrals/${editingId}`, form, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          toast({ title: 'Referral updated', status: 'success' });
+          setEditingId(null);
+          setForm({ issueType: '', csiId: '', fhIssueId: '', fileLink: '', status: 'In progress', notes: '' });
+          fetchReferrals();
+        } catch (err) {
+          toast({ title: 'Error updating referral', status: 'error' });
+        }
       });
-      fetchReferrals();
-    } catch (err) {
-      toast({ title: 'Error saving referral', status: 'error' });
+      onOpen();
+    } else {
+      setConfirmLabel('Submit');
+      setConfirmAction(() => async () => {
+        try {
+          const token = localStorage.getItem('authToken');
+          await axios.post(`${API_BASE_URL}/api/referrals`, form, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          toast({ title: 'Referral created', status: 'success' });
+          setForm({ issueType: '', csiId: '', fhIssueId: '', fileLink: '', status: 'In progress', notes: '' });
+          fetchReferrals();
+        } catch (err) {
+          toast({ title: 'Error saving referral', status: 'error' });
+        }
+      });
+      onOpen();
     }
   };
 
   const handleEdit = (referral) => {
     setEditingId(referral._id);
-    setForm({
-      issueType: referral.issueType,
-      csiId: referral.csiId,
-      fhIssueId: referral.fhIssueId,
-      fileLink: referral.fileLink,
-      status: referral.status,
-      notes: referral.notes,
+    setForm({ ...referral });
+  };
+
+  const handleDelete = (id) => {
+    setConfirmLabel('Delete');
+    setConfirmAction(() => async () => {
+      try {
+        await axios.delete(`${API_BASE_URL}/api/referrals/${id}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
+        });
+        toast({ title: 'Referral deleted', status: 'info' });
+        fetchReferrals();
+      } catch (err) {
+        toast({ title: 'Delete failed', status: 'error' });
+      }
     });
+    onOpen();
   };
 
-  const handleDelete = async (id) => {
-    try {
-      await axios.delete(`${API_BASE_URL}/api/referrals/${id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
-      });
-      toast({ title: 'Referral deleted', status: 'info' });
-      fetchReferrals();
-    } catch (err) {
-      toast({ title: 'Delete failed', status: 'error' });
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
     }
   };
 
-  const handleSendDueTodayEmail = async () => {
-    try {
-      const res = await axios.post(`${API_BASE_URL}/api/referrals/email-due`, {}, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
-      });
-      toast({ title: 'Email sent', description: res.data.message, status: 'success' });
-    } catch (err) {
-      toast({ title: 'Email failed', status: 'error' });
-    }
+  const exportToCSV = () => {
+    const csv = filteredReferrals.map(r => ({
+      issueType: r.issueType,
+      csiId: r.csiId,
+      fhIssueId: r.fhIssueId,
+      fileLink: r.fileLink,
+      status: r.status,
+      notes: r.notes,
+      createdBy: `${r.createdBy?.firstName || ''} ${r.createdBy?.lastName || ''}`.trim(),
+      createdAt: r.createdAt ? moment(r.createdAt).format('MM/DD/YYYY') : '',
+      updatedAt: r.updatedAt ? moment(r.updatedAt).format('MM/DD/YYYY') : '',
+      daysOpen: moment().diff(moment(r.createdAt), 'days'),
+      daysStale: moment().diff(moment(r.updatedAt), 'days'),
+    }));
+
+    if (csv.length === 0) return;
+
+    const headers = Object.keys(csv[0]);
+    const rows = csv.map(row => headers.map(h => `"${row[h] || ''}"`).join(','));
+    const content = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([content], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `filtered_referrals_${Date.now()}.csv`;
+    link.click();
   };
+
+  const filteredReferrals = referrals
+    .map(r => ({
+      ...r,
+      daysOpen: moment().diff(moment(r.createdAt), 'days'),
+      daysStale: moment().diff(moment(r.updatedAt), 'days'),
+    }))
+    .filter(r => {
+      const meetsAge = !daysThreshold || r.daysStale >= Number(daysThreshold);
+      const meetsStatus = includeResolved || r.status === 'In progress';
+      return meetsStatus && meetsAge;
+    })
+    .sort((a, b) => {
+      if (!sortField) return 0;
+      let aVal = a[sortField], bVal = b[sortField];
+      if (sortField === 'createdAt' || sortField === 'updatedAt') {
+        aVal = new Date(aVal); bVal = new Date(bVal);
+      }
+      return sortDirection === 'asc'
+        ? aVal > bVal ? 1 : -1
+        : aVal < bVal ? 1 : -1;
+    });
 
   return (
-    <Box maxW="90%" mx="auto" mt={10} p={5}>
+    <Box maxW="95%" mx="auto" mt={10} p={5}>
       <Heading mb={6}>FH Issue Referral Portal</Heading>
 
       <Box mb={6}>
@@ -134,51 +193,97 @@ const FHReferralPortal = () => {
         </Button>
       </Box>
 
-      <Box mb={4}>
-        <Button onClick={handleSendDueTodayEmail} colorScheme="blue">
-          Send Due Today to yzhang@tccm.org
+      <Box mb={4} display="flex" gap={4} alignItems="center">
+        <Input
+          type="number"
+          value={daysThreshold}
+          onChange={(e) => {
+            setDaysThreshold(e.target.value);
+            localStorage.setItem('referralThreshold', e.target.value);
+          }}
+          placeholder="Show issues not updated in N days"
+          width="300px"
+        />
+        <Button onClick={() => setDaysThreshold('')}>Reset Filter</Button>
+        <label>
+          <input
+            type="checkbox"
+            checked={includeResolved}
+            onChange={(e) => setIncludeResolved(e.target.checked)}
+            style={{ marginRight: '5px' }}
+          />
+          Include Resolved
+        </label>
+        <Button onClick={exportToCSV} colorScheme="green">
+          Export Filtered to CSV
         </Button>
+      </Box>
+
+      <Box mb={2} fontWeight="bold">
+        Showing {filteredReferrals.length} matching {includeResolved ? 'records' : 'in-progress issues'}
       </Box>
 
       {loading ? (
         <Spinner />
       ) : (
-        <Table size="sm" variant="striped" colorScheme="teal">
-          <Thead>
-            <Tr>
-              <Th>Issue Type</Th>
-              <Th>CSI ID</Th>
-              <Th>FH Issue ID</Th>
-              <Th>File Link</Th>
-              <Th>Status</Th>
-              <Th>Notes</Th>
-              <Th>Created By</Th>
-              <Th>Created</Th>
-              <Th>Updated</Th>
-              <Th>Actions</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {referrals.map((r) => (
-              <Tr key={r._id}>
-                <Td>{r.issueType}</Td>
-                <Td>{r.csiId}</Td>
-                <Td>{r.fhIssueId}</Td>
-                <Td><a href={r.fileLink} target="_blank" rel="noreferrer">View</a></Td>
-                <Td>{r.status}</Td>
-                <Td>{r.notes}</Td>
-                <Td>{r.createdBy?.firstName} {r.createdBy?.lastName}</Td>
-                <Td>{moment(r.createdAt).format('MM/DD/YYYY')}</Td>
-                <Td>{moment(r.updatedAt).format('MM/DD/YYYY')}</Td>
-                <Td>
-                  <Button size="xs" colorScheme="yellow" onClick={() => handleEdit(r)} mr={2}>Edit</Button>
-                  <Button size="xs" colorScheme="red" onClick={() => handleDelete(r._id)}>Delete</Button>
-                </Td>
+        <Box overflowX="auto" maxHeight="600px" overflowY="auto">
+          <Table size="sm" variant="striped" colorScheme="teal" position="relative">
+            <Thead position="sticky" top={0} bg="gray.200" zIndex={1}>
+              <Tr>
+                {['issueType', 'csiId', 'fhIssueId', '', 'status', '', '', 'createdAt', 'updatedAt', 'daysOpen', 'daysStale', ''].map((field, i) => (
+                  <Th key={i} cursor={field ? 'pointer' : 'default'} onClick={field ? () => handleSort(field) : undefined}>
+                    {['Issue Type', 'CSI ID', 'FH Issue ID', 'File Link', 'Status', 'Notes', 'Created By', 'Created', 'Updated', 'Days Open', 'Days Stale', 'Actions'][i]}
+                    {field === sortField && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
+                  </Th>
+                ))}
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
+            </Thead>
+            <Tbody>
+              {filteredReferrals.map(r => (
+                <Tr key={r._id}>
+                  <Td>{r.issueType}</Td>
+                  <Td>{r.csiId}</Td>
+                  <Td>{r.fhIssueId}</Td>
+                  <Td><a href={r.fileLink} target="_blank" rel="noreferrer">View</a></Td>
+                  <Td>{r.status}</Td>
+                  <Td>{r.notes}</Td>
+                  <Td>{r.createdBy?.firstName} {r.createdBy?.lastName}</Td>
+                  <Td>{r.createdAt ? moment(r.createdAt).format('MM/DD/YYYY') : ''}</Td>
+                  <Td>{r.updatedAt ? moment(r.updatedAt).format('MM/DD/YYYY') : ''}</Td>
+                  <Td>{r.daysOpen}</Td>
+                  <Td>{r.daysStale}</Td>
+                  <Td>
+                    <Button size="xs" colorScheme="yellow" onClick={() => handleEdit(r)} mr={2}>Edit</Button>
+                    <Button size="xs" colorScheme="red" onClick={() => handleDelete(r._id)}>Delete</Button>
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </Box>
       )}
+
+      <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={onClose}>
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Confirm {confirmLabel}
+            </AlertDialogHeader>
+            <AlertDialogBody>
+              Are you sure you want to {confirmLabel.toLowerCase()} this referral?
+            </AlertDialogBody>
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onClose}>Cancel</Button>
+              <Button colorScheme={confirmLabel === 'Delete' ? 'red' : 'yellow'} onClick={() => {
+                confirmAction();
+                onClose();
+              }} ml={3}>
+                Yes, {confirmLabel}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Box>
   );
 };
