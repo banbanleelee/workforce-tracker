@@ -9,6 +9,7 @@ import UserDashboard from './components/UserDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import ProviderDirectory from './components/ProviderDirectory';
 import BulkSearch from './components/BulkSearch';
+import FHReferralPortal from './components/FHReferralPortal';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ProviderContextProvider } from './context/ProviderContext';
 
@@ -65,6 +66,13 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route 
+            path="/fh-referral" 
+            element={
+              <ProtectedRoute>
+                <FHReferralPortal />
+              </ProtectedRoute>
+            } />
         </Routes>
       </Router>
     </ChakraProvider>

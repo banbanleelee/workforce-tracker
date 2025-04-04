@@ -10,25 +10,36 @@ const { sendTestEmail } = require('./jobs/emailScheduler');
 const app = express();
 
 //Force all redirects to use HTTPS in server.js
-app.use((req, res, next) => {
- if (req.headers['x-forwarded-proto'] !== 'https') {
-   return res.redirect(`https://${req.headers.host}${req.url}`);
- }
- next();
-});
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    if (req.headers['x-forwarded-proto'] !== 'https') {
+      return res.redirect(`https://${req.headers.host}${req.url}`);
+    }
+    next();
+  });
+}
+
 
 // Enable CORS with appropriate settings
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://workforce-tracker.vercel.app',
+];
+
 const corsOptions = {
- origin: 'https://workforce-tracker.vercel.app',
- methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
- allowedHeaders: ['Content-Type', 'Authorization'],
- credentials: true
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
 };
+
 app.use(cors(corsOptions));
-// Explicitly handle preflight requests
-app.options('*', cors(corsOptions), (req, res) => {
- res.status(200).end();
-});
 
 // Middleware
 app.use(express.json());
@@ -71,6 +82,10 @@ app.use('/api/tasks', taskRoutes);
 // Auth Routes
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes); 
+
+// FH Issue Referral Routes
+const fhReferralRoutes = require('./routes/fhReferralRoutes');
+app.use('/api/referrals', fhReferralRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5000;

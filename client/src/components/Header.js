@@ -61,6 +61,13 @@ const Header = () => {
             <Button as={Link} to="/bulk-search" target="_blank" colorScheme="teal" variant="outline" mr={2}>
               Bulk Search
             </Button>
+
+            {userRole === 'admin' && (
+              <Button as={Link} to="/fh-referral" colorScheme="teal" variant="outline" mr={2}>
+                FH Referral Portal
+              </Button>
+            )}
+
             <Button
               as={Link}
               to={userRole === 'admin' ? '/admin-dashboard' : '/user-dashboard'}
